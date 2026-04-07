@@ -1,8 +1,9 @@
 import os
 from datetime import datetime
-from typing import List, Literal
+from typing import Any, List, Literal, Optional
 
 from fastapi import FastAPI, HTTPException
+from langfuse import Langfuse
 from openai import OpenAI
 from pydantic import BaseModel
 from psycopg.rows import dict_row
@@ -11,6 +12,7 @@ from psycopg_pool import ConnectionPool
 app = FastAPI(title="Chat Reports Backend")
 openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
 openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+langfuse_client: Optional[Langfuse] = None
 database_url = os.getenv(
     "DATABASE_URL",
     "postgresql://postgres:postgres@app:5432/reporting",
@@ -38,6 +40,28 @@ class CreateReportRequest(BaseModel):
 
 class CreateMessageRequest(BaseModel):
     content: str
+
+
+def init_langfuse() -> None:
+    global langfuse_client
+    public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
+    secret_key = os.getenv("LANGFUSE_SECRET_KEY")
+    host = os.getenv("LANGFUSE_HOST", "http://langfuse-web:3000")
+    if public_key and secret_key:
+        langfuse_client = Langfuse(
+            public_key=public_key,
+            secret_key=secret_key,
+            host=host,
+        )
+
+
+def start_trace(name: str, input_data: Any, metadata: Optional[dict[str, Any]] = None):
+    if not langfuse_client:
+        return None
+    try:
+        return langfuse_client.trace(name=name, input=input_data, metadata=metadata or {})
+    except Exception:
+        return None
 
 
 def init_db() -> None:
@@ -89,6 +113,7 @@ def init_db() -> None:
 
 @app.on_event("startup")
 def on_startup() -> None:
+    init_langfuse()
     init_db()
 
 
@@ -156,6 +181,11 @@ def list_messages(report_id: int) -> List[Message]:
 
 @app.post("/api/reports/{report_id}/messages", status_code=201)
 def create_message(report_id: int, payload: CreateMessageRequest):
+    trace = start_trace(
+        "create_message",
+        input_data={"report_id": report_id, "content": payload.content},
+        metadata={"model": openai_model},
+    )
     content = payload.content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="Message content is required")
@@ -164,6 +194,7 @@ def create_message(report_id: int, payload: CreateMessageRequest):
 
     if openai_client:
         try:
+            generation = trace.generation(name="openai_response") if trace else None
             response = openai_client.responses.create(
                 model=openai_model,
                 input=[
@@ -177,8 +208,12 @@ def create_message(report_id: int, payload: CreateMessageRequest):
             generated = (response.output_text or "").strip()
             if generated:
                 assistant_content = generated
+            if generation:
+                generation.end(output=assistant_content)
         except Exception:
             assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
+            if trace:
+                trace.event(name="openai_error", input={"report_id": report_id})
     else:
         assistant_content = "I stored your message. Add OPENAI_API_KEY to enable AI responses."
 
@@ -231,7 +266,25 @@ def create_message(report_id: int, payload: CreateMessageRequest):
 
     user_message = Message(**user_row)
     assistant_message = Message(**assistant_row)
+    if trace:
+        trace.update(
+            output={
+                "report_id": report_id,
+                "user_message_id": user_message.id,
+                "assistant_message_id": assistant_message.id,
+            }
+        )
     return {"messages": [user_message, assistant_message]}
+
+
+@app.on_event("shutdown")
+def on_shutdown() -> None:
+    if langfuse_client:
+        try:
+            langfuse_client.flush()
+        except Exception:
+            pass
+    pool.close()
 
 
 @app.get("/health")
