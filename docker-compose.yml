@@ -1,5 +1,5 @@
 services:
-  app-postgres:
+  postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     ports:
@@ -9,7 +9,7 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
       - POSTGRES_DB=${POSTGRES_DB:-reporting}
     volumes:
-      - app_pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 3s
@@ -25,11 +25,11 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_MODEL=${OPENAI_MODEL:-gpt-4.1-mini}
-      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@app-postgres:5432/reporting}
+      - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/reporting}
     volumes:
       - ./backend:/app
     depends_on:
-      app-postgres:
+      postgres:
         condition: service_healthy
 
   frontend:
@@ -46,4 +46,4 @@ services:
       - backend
 
 volumes:
-  app_pg_data:
+  pg_data:

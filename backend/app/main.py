@@ -13,7 +13,7 @@ openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI
 openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 database_url = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@app-postgres:5432/reporting",
+    "postgresql://postgres:postgres@app:5432/reporting",
 )
 pool = ConnectionPool(conninfo=database_url, kwargs={"row_factory": dict_row})
 
