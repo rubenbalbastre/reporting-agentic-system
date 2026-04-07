@@ -127,7 +127,7 @@ export default function App() {
           title="Toggle Reports"
           onClick={() => setSidebarVisible((v) => !v)}
         >
-          🧠
+          📚
         </button>
         <div className="view-controls">
           <button onClick={setOriginalView}>Original View</button>
