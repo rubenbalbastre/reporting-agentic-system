@@ -122,13 +122,16 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <button
-          className="icon-btn"
-          title="Toggle Reports"
-          onClick={() => setSidebarVisible((v) => !v)}
-        >
-          📚
-        </button>
+        <div className="topbar-left">
+          <button
+            className="icon-btn"
+            title="Toggle Reports"
+            onClick={() => setSidebarVisible((v) => !v)}
+          >
+            📚
+          </button>
+          <h1 className="app-title">IntelligentReport</h1>
+        </div>
         <div className="view-controls">
           <button onClick={setOriginalView}>Original View</button>
           <button onClick={setExpandReportView}>Expand Report</button>

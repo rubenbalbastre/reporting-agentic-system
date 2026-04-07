@@ -45,6 +45,21 @@ body {
   box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
 .icon-btn {
   width: 44px;
   height: 36px;
