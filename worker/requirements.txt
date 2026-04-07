@@ -1,0 +1,6 @@
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+pandas==2.3.1
+matplotlib==3.10.5
+seaborn==0.13.2
+pyarrow==17.0.0
