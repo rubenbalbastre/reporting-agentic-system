@@ -4,9 +4,15 @@ COMPOSE := docker compose
 BASE_FILE := -f docker-compose.yml
 LANGFUSE_FILE := -f docker-compose.langfuse.yml
 
+ifneq (,$(wildcard .env))
+include .env
+export
+endif
+
 .PHONY: help setup setup-all setup-langfuse up down ps logs \
         langfuse-up langfuse-down langfuse-ps langfuse-logs \
-        stack-up stack-down stack-ps stack-logs
+        stack-up stack-down stack-ps stack-logs \
+        kaggle-prepare kaggle-download kaggle-load kaggle-setup
 
 help:
 	@echo "Available targets:"
@@ -23,6 +29,12 @@ help:
 	@echo ""
 	@echo "Langfuse only:"
 	@echo "  make langfuse-up|langfuse-down|langfuse-ps|langfuse-logs"
+	@echo ""
+	@echo "Kaggle Olist ingest:"
+	@echo "  make kaggle-prepare   # Validate ~/.kaggle/kaggle.json"
+	@echo "  make kaggle-download  # Download olist dataset into data/raw/olist"
+	@echo "  make kaggle-load      # Load Olist CSVs into app Postgres"
+	@echo "  make kaggle-setup     # Prepare + download + load"
 
 setup: up
 
@@ -65,3 +77,14 @@ langfuse-ps:
 
 langfuse-logs:
 	$(COMPOSE) $(LANGFUSE_FILE) logs -f --tail=200
+
+kaggle-prepare:
+	./scripts/prepare_kaggle.sh
+
+kaggle-download:
+	./scripts/download_kaggle_olist.sh data/raw/olist
+
+kaggle-load:
+	./scripts/load_olist_to_postgres.sh data/raw/olist
+
+kaggle-setup: kaggle-prepare kaggle-download kaggle-load
