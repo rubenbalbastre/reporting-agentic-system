@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="840" height="420" viewBox="0 0 840 420">
+  <rect width="840" height="420" fill="#f8fafc"/>
+  <rect x="80" y="60" width="700" height="300" rx="14" fill="#ffffff" stroke="#d8dde8"/>
+  <text x="110" y="98" font-family="Arial" font-size="20" fill="#172033">Revenue by Region</text>
+  <line x1="120" y1="320" x2="740" y2="320" stroke="#b9c2d3"/>
+  <line x1="120" y1="130" x2="120" y2="320" stroke="#b9c2d3"/>
+  <rect x="170" y="210" width="80" height="110" fill="#0f766e"/>
+  <rect x="290" y="180" width="80" height="140" fill="#1d4ed8"/>
+  <rect x="410" y="160" width="80" height="160" fill="#d97706"/>
+  <rect x="530" y="140" width="80" height="180" fill="#7c3aed"/>
+  <rect x="650" y="190" width="80" height="130" fill="#db2777"/>
+  <text x="188" y="342" font-family="Arial" font-size="14" fill="#58627a">NW</text>
+  <text x="309" y="342" font-family="Arial" font-size="14" fill="#58627a">NE</text>
+  <text x="430" y="342" font-family="Arial" font-size="14" fill="#58627a">SE</text>
+  <text x="549" y="342" font-family="Arial" font-size="14" fill="#58627a">SW</text>
+  <text x="671" y="342" font-family="Arial" font-size="14" fill="#58627a">INTL</text>
+</svg>
