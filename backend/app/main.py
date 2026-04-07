@@ -1,45 +1,25 @@
 import os
-from datetime import datetime
 from typing import Any, List, Literal, Optional
 
 from fastapi import FastAPI, HTTPException
 from langfuse import Langfuse
-from openai import OpenAI
-from pydantic import BaseModel
+
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
 
+from .schemas import Report, Message, CreateReportRequest, CreateMessageRequest
+from .graph import ReportingAgentGraph
+
+
 app = FastAPI(title="Chat Reports Backend")
-openai_client = OpenAI(api_key=os.getenv("OPENAI_API_KEY")) if os.getenv("OPENAI_API_KEY") else None
-openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
 langfuse_client: Optional[Langfuse] = None
+openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
+reporting_agent: Optional[ReportingAgentGraph] = None
 database_url = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:postgres@app:5432/reporting",
+    "postgresql://postgres:postgres@postgres:5432/reporting",
 )
 pool = ConnectionPool(conninfo=database_url, kwargs={"row_factory": dict_row})
-
-
-class Report(BaseModel):
-    id: int
-    title: str
-    created_at: datetime
-
-
-class Message(BaseModel):
-    id: int
-    report_id: int
-    role: Literal["user", "assistant"]
-    content: str
-    created_at: datetime
-
-
-class CreateReportRequest(BaseModel):
-    title: str = "New Report"
-
-
-class CreateMessageRequest(BaseModel):
-    content: str
 
 
 def init_langfuse() -> None:
@@ -132,7 +112,7 @@ def list_messages(report_id: int) -> List[Message]:
 
 
 @app.post("/api/reports/{report_id}/messages", status_code=201)
-def create_message(report_id: int, payload: CreateMessageRequest):
+async def create_message(report_id: int, payload: CreateMessageRequest):
     trace = start_trace(
         "create_message",
         input_data={"report_id": report_id, "content": payload.content},
@@ -143,31 +123,29 @@ def create_message(report_id: int, payload: CreateMessageRequest):
         raise HTTPException(status_code=400, detail="Message content is required")
 
     assistant_content = f"Got it. You said: {content}"
-
-    if openai_client:
-        try:
-            generation = trace.generation(name="openai_response") if trace else None
-            response = openai_client.responses.create(
-                model=openai_model,
-                input=[
+    generation = trace.generation(name="openai_response") if trace else None
+    try:
+        reporting_agent = ReportingAgentGraph(model_name=openai_model)
+        response = await reporting_agent.ainvoke(
+            {
+                "messages": [
                     {
                         "role": "system",
                         "content": "You are a concise analytics reporting assistant helping refine report drafts.",
                     },
                     {"role": "user", "content": content},
-                ],
-            )
-            generated = (response.output_text or "").strip()
-            if generated:
-                assistant_content = generated
-            if generation:
-                generation.end(output=assistant_content)
-        except Exception:
-            assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
-            if trace:
-                trace.event(name="openai_error", input={"report_id": report_id})
-    else:
-        assistant_content = "I stored your message. Add OPENAI_API_KEY to enable AI responses."
+                ]
+            }
+        )
+        generated = (response.get("output_text") or "").strip()
+        if generated:
+            assistant_content = generated
+        if generation:
+            generation.end(output=assistant_content)
+    except Exception:
+        assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
+        if trace:
+            trace.event(name="openai_error", input={"report_id": report_id})
 
     with pool.connection() as conn:
         with conn.cursor() as cur:

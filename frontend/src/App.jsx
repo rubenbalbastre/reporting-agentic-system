@@ -45,6 +45,19 @@ export default function App() {
     const res = await fetch(`/api/reports/${reportId}/messages`);
     const data = await res.json();
     setMessages(data);
+    return data;
+  }
+
+  function hasPendingAssistant(messagesList) {
+    return messagesList.some((m) => m.role === "assistant" && m.status === "pending");
+  }
+
+  async function pollPendingMessages(reportId, maxTries = 30, intervalMs = 1000) {
+    for (let i = 0; i < maxTries; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, intervalMs));
+      const latest = await loadMessages(reportId);
+      if (!hasPendingAssistant(latest)) return;
+    }
   }
 
   async function createReport() {
@@ -63,6 +76,7 @@ export default function App() {
   async function sendMessage() {
     if (!activeReportId || !input.trim()) return;
 
+    const reportId = activeReportId;
     const content = input.trim();
     setInput("");
 
@@ -73,17 +87,22 @@ export default function App() {
     };
     setMessages((prev) => [...prev, optimisticUser]);
 
-    const res = await fetch(`/api/reports/${activeReportId}/messages`, {
+    const res = await fetch(`/api/reports/${reportId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
 
     const data = await res.json();
-    await loadMessages(activeReportId);
+    const latest = await loadMessages(reportId);
 
     if (!res.ok) {
       alert(data.error || "Failed to send message");
+      return;
+    }
+
+    if (hasPendingAssistant(latest)) {
+      await pollPendingMessages(reportId);
     }
   }
 
@@ -191,7 +210,8 @@ export default function App() {
             <div className="panel-content chat-messages">
               {messages.map((msg) => (
                 <div key={msg.id} className={`message ${msg.role}`}>
-                  <strong>{msg.role}:</strong> {msg.content}
+                  <strong>{msg.role}:</strong>{" "}
+                  {msg.status === "pending" ? "Thinking..." : msg.content}
                 </div>
               ))}
             </div>

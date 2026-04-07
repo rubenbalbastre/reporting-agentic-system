@@ -12,7 +12,8 @@ endif
 .PHONY: help setup setup-all setup-langfuse up down ps logs \
         langfuse-up langfuse-down langfuse-ps langfuse-logs \
         stack-up stack-down stack-ps stack-logs \
-        kaggle-prepare kaggle-download kaggle-load kaggle-setup
+        kaggle-prepare kaggle-download kaggle-load kaggle-setup \
+        db-init
 
 help:
 	@echo "Available targets:"
@@ -35,6 +36,9 @@ help:
 	@echo "  make kaggle-download  # Download olist dataset into data/raw/olist"
 	@echo "  make kaggle-load      # Load Olist CSVs into app Postgres"
 	@echo "  make kaggle-setup     # Prepare + download + load"
+	@echo ""
+	@echo "Database:"
+	@echo "  make db-init          # Apply app schema/seed (reports/conversations/messages)"
 
 setup: up
 
@@ -88,3 +92,7 @@ kaggle-load:
 	./scripts/load_olist_to_postgres.sh data/raw/olist
 
 kaggle-setup: kaggle-prepare kaggle-download kaggle-load
+
+db-init:
+	$(COMPOSE) $(BASE_FILE) up -d postgres
+	$(COMPOSE) $(BASE_FILE) exec -T postgres psql -U "$${POSTGRES_USER:-postgres}" -d "$${POSTGRES_DB:-reporting}" -f /dev/stdin < infra/postgres/app_schema.sql
