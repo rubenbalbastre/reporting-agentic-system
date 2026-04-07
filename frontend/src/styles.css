@@ -81,9 +81,26 @@ button:hover {
 
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr 1fr;
   gap: 12px;
   min-height: calc(100vh - 102px);
+}
+
+.layout.with-sidebar.two-panels {
+  grid-template-columns: 260px 1fr 1fr;
+}
+
+.layout.no-sidebar.two-panels {
+  grid-template-columns: 1fr 1fr;
+}
+
+.layout.with-sidebar.report-only,
+.layout.with-sidebar.chat-only {
+  grid-template-columns: 260px 1fr;
+}
+
+.layout.no-sidebar.report-only,
+.layout.no-sidebar.chat-only {
+  grid-template-columns: 1fr;
 }
 
 .sidebar,

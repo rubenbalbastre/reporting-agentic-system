@@ -16,8 +16,6 @@ export default function App() {
 
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [viewMode, setViewMode] = useState(VIEW.ORIGINAL);
-  const [reportMinimized, setReportMinimized] = useState(false);
-  const [chatMinimized, setChatMinimized] = useState(false);
 
   useEffect(() => {
     fetch("/content.md")
@@ -92,14 +90,34 @@ export default function App() {
   const showReportPanel = useMemo(() => {
     if (viewMode === VIEW.REPORT) return true;
     if (viewMode === VIEW.CHAT) return false;
-    return !reportMinimized;
-  }, [viewMode, reportMinimized]);
+    return true;
+  }, [viewMode]);
 
   const showChatPanel = useMemo(() => {
     if (viewMode === VIEW.CHAT) return true;
     if (viewMode === VIEW.REPORT) return false;
-    return !chatMinimized;
-  }, [viewMode, chatMinimized]);
+    return true;
+  }, [viewMode]);
+
+  function setOriginalView() {
+    setViewMode(VIEW.ORIGINAL);
+  }
+
+  function setExpandReportView() {
+    setViewMode(VIEW.REPORT);
+  }
+
+  function setExpandChatView() {
+    setViewMode(VIEW.CHAT);
+  }
+
+  const layoutClassName = useMemo(() => {
+    const withSidebar = sidebarVisible ? "with-sidebar" : "no-sidebar";
+    if (showReportPanel && showChatPanel) return `layout ${withSidebar} two-panels`;
+    if (showReportPanel) return `layout ${withSidebar} report-only`;
+    if (showChatPanel) return `layout ${withSidebar} chat-only`;
+    return `layout ${withSidebar} empty`;
+  }, [sidebarVisible, showReportPanel, showChatPanel]);
 
   return (
     <div className="app-shell">
@@ -112,19 +130,13 @@ export default function App() {
           🧠
         </button>
         <div className="view-controls">
-          <button onClick={() => setViewMode(VIEW.ORIGINAL)}>Original View</button>
-          <button onClick={() => setViewMode(VIEW.REPORT)}>Expand Report</button>
-          <button onClick={() => setViewMode(VIEW.CHAT)}>Expand Chat</button>
-          <button onClick={() => setReportMinimized((m) => !m)}>
-            {reportMinimized ? "Expand Report Panel" : "Minimize Report Panel"}
-          </button>
-          <button onClick={() => setChatMinimized((m) => !m)}>
-            {chatMinimized ? "Expand Chat Panel" : "Minimize Chat Panel"}
-          </button>
+          <button onClick={setOriginalView}>Original View</button>
+          <button onClick={setExpandReportView}>Expand Report</button>
+          <button onClick={setExpandChatView}>Expand Chat</button>
         </div>
       </header>
 
-      <div className="layout">
+      <div className={layoutClassName}>
         {sidebarVisible && (
           <aside className="sidebar">
             <div className="sidebar-head">
@@ -150,9 +162,6 @@ export default function App() {
           <section className="panel report-panel">
             <div className="panel-head">
               <h2>Report Markdown</h2>
-              <button onClick={() => setReportMinimized((m) => !m)}>
-                {reportMinimized ? "Expand" : "Minimize"}
-              </button>
             </div>
             <div className="panel-content markdown-content">
               <ReactMarkdown>{markdown}</ReactMarkdown>
@@ -164,9 +173,6 @@ export default function App() {
           <section className="panel chat-panel">
             <div className="panel-head">
               <h2>Chat</h2>
-              <button onClick={() => setChatMinimized((m) => !m)}>
-                {chatMinimized ? "Expand" : "Minimize"}
-              </button>
             </div>
             <div className="panel-content chat-messages">
               {messages.map((msg) => (
