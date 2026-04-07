@@ -13,8 +13,6 @@ from .graph import ReportingAgentGraph
 
 app = FastAPI(title="Chat Reports Backend")
 langfuse_client: Optional[Langfuse] = None
-openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1-mini")
-reporting_agent: Optional[ReportingAgentGraph] = None
 database_url = os.getenv(
     "DATABASE_URL",
     "postgresql://postgres:postgres@postgres:5432/reporting",
@@ -115,8 +113,7 @@ def list_messages(report_id: int) -> List[Message]:
 async def create_message(report_id: int, payload: CreateMessageRequest):
     trace = start_trace(
         "create_message",
-        input_data={"report_id": report_id, "content": payload.content},
-        metadata={"model": openai_model},
+        input_data={"report_id": report_id, "content": payload.content}
     )
     content = payload.content.strip()
     if not content:
@@ -125,7 +122,7 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
     assistant_content = f"Got it. You said: {content}"
     generation = trace.generation(name="openai_response") if trace else None
     try:
-        reporting_agent = ReportingAgentGraph(model_name=openai_model)
+        reporting_agent = ReportingAgentGraph()
         response = await reporting_agent.ainvoke(
             {
                 "messages": [
