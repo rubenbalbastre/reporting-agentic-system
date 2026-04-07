@@ -161,7 +161,7 @@ export default function App() {
         {showReportPanel && (
           <section className="panel report-panel">
             <div className="panel-head">
-              <h2>Report Markdown</h2>
+              <h2>Report Preview</h2>
             </div>
             <div className="panel-content markdown-content">
               <ReactMarkdown>{markdown}</ReactMarkdown>
