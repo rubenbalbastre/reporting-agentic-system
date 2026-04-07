@@ -64,57 +64,9 @@ def start_trace(name: str, input_data: Any, metadata: Optional[dict[str, Any]] =
         return None
 
 
-def init_db() -> None:
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS reports (
-                    id BIGSERIAL PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                );
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS conversations (
-                    id BIGSERIAL PRIMARY KEY,
-                    report_id BIGINT NOT NULL REFERENCES reports(id) ON DELETE CASCADE,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                );
-                """
-            )
-            cur.execute(
-                """
-                CREATE TABLE IF NOT EXISTS messages (
-                    id BIGSERIAL PRIMARY KEY,
-                    conversation_id BIGINT NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-                    role TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
-                    content TEXT NOT NULL,
-                    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-                );
-                """
-            )
-            cur.execute("SELECT COUNT(*) AS count FROM reports;")
-            count = cur.fetchone()["count"]
-            if count == 0:
-                cur.execute(
-                    "INSERT INTO reports (title) VALUES (%s) RETURNING id;",
-                    ("First Report",),
-                )
-                report_id = cur.fetchone()["id"]
-                cur.execute(
-                    "INSERT INTO conversations (report_id) VALUES (%s);",
-                    (report_id,),
-                )
-        conn.commit()
-
-
 @app.on_event("startup")
 def on_startup() -> None:
     init_langfuse()
-    init_db()
 
 
 @app.get("/api/reports")
