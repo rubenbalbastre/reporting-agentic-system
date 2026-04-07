@@ -177,13 +177,6 @@ export default function App() {
             <div className="panel-head">
               <h2>Chat</h2>
             </div>
-            <div className="panel-content chat-messages">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`message ${msg.role}`}>
-                  <strong>{msg.role}:</strong> {msg.content}
-                </div>
-              ))}
-            </div>
             <div className="chat-input">
               <input
                 value={input}
@@ -194,6 +187,13 @@ export default function App() {
                 }}
               />
               <button onClick={sendMessage}>Send</button>
+            </div>
+            <div className="panel-content chat-messages">
+              {messages.map((msg) => (
+                <div key={msg.id} className={`message ${msg.role}`}>
+                  <strong>{msg.role}:</strong> {msg.content}
+                </div>
+              ))}
             </div>
           </section>
         )}
