@@ -3,9 +3,9 @@ import subprocess
 from pathlib import Path
 from agents import Agent, function_tool
 
-from .common_tools import think_tool, finish_tool
+from common_tools import think_tool, finish_tool
 
-load_dotenv("../.env")
+load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 
 # -------------------------------------------------------------------

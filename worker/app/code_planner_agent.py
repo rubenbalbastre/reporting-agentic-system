@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 from agents import Agent, function_tool
 from pydantic import BaseModel
 
-from .database_agent import build_database_agent
-from .common_tools import think_tool
+from database_agent import build_database_agent
+from common_tools import think_tool
 
 
 # -------------------------------------------------------------------

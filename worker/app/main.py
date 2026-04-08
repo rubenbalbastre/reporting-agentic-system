@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from .code_planner_agent import build_code_planner_agent
-from .code_executor_agent import build_code_executor_agent
+from code_planner_agent import build_code_planner_agent
+from code_executor_agent import build_code_executor_agent
 from agents import Runner
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -61,7 +61,7 @@ def main():
     with TestClient(app) as client:
 
         response = client.post("/invoke/", json={
-            "query": "Write a Python script that prints the current date and time."
+            "query": "Can you answer questions about total sales by product category in the last month?"
         })
         print(response.status_code)
         print(response.json())

@@ -160,7 +160,7 @@ def build_database_agent() -> Agent:
     load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
     database_agent = Agent(
-        name="SQL assistant",
+        name="database agent",
         instructions="You must think if the user's question can be answered by querying the database. If it can, you should generate SQL queries based on the user's question. You should only respond with the SQL query and nothing else.",
         model="gpt-5.4-nano",
         output_type=DataBaseInspection,
