@@ -18,7 +18,7 @@ def call_artifact_worker(content: str) -> str:
         response = requests.post(
             endpoint,
             json={"query": content},
-            timeout=30,
+            timeout=300,
         )
         response.raise_for_status()
         return response.json().get("result", "")

@@ -112,6 +112,7 @@ def build_code_executor_agent() -> Agent:
             "and execute them with run_python. "
             "Prefer an iterative loop: inspect -> write -> run -> fix. "
             "Do not claim code works unless you executed it successfully."
+            "You can get postgress database url from DATABASE_URL environment variable and connect to it to inspect the schema or run queries if needed. "
         ),
         model="gpt-5.4-nano",
         tools=[
