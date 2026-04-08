@@ -7,14 +7,10 @@ from dotenv import load_dotenv
 
 from agents import Agent, Runner, function_tool
 
+from .report_agent import build_report_agent
+
 load_dotenv("../.env")
 
-
-report_assistant = Agent(
-    name="Report assistant",
-    instructions="You must generate a report to answer ther user's question. You should only respond with the report and nothing else.",
-    model="gpt-5.4-nano"
-)
 
 def build_main_agent(report_id: int) -> Agent:
     @function_tool
@@ -41,10 +37,10 @@ def build_main_agent(report_id: int) -> Agent:
         ),
         model="gpt-5.4-nano",
         tools=[
-            # report_assistant.as_tool(
-            #     tool_name="report_assistant",
-            #     tool_description="Tool to generate reports based on the user's question."
-            # ),
+            build_report_agent(report_id=report_id).as_tool(
+                tool_name="report_assistant",
+                tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
+            ),
             call_artifact_worker
         ],
     )
