@@ -54,6 +54,8 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     def run_python(entrypoint: str, timeout: int = 10) -> str:
         """
         Execute a Python file from the workspace and return stdout/stderr.
+            - entrypoint: path to the Python file to execute, relative to the workspace.
+            - timeout: maximum execution time in seconds.
         """
         file_path = safe_path(entrypoint)
         if not file_path.exists():
