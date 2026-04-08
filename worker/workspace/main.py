@@ -1,10 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def main() -> None:
-    now = datetime.now()
-    formatted = now.strftime("%Y-%m-%d %H:%M:%S")
-    print(f"Current date and time: {formatted}")
+    # Local time (no external dependencies)
+    now_local = datetime.now()
+
+    # Readable ISO-like format without microseconds
+    formatted = now_local.isoformat(timespec="seconds")
+
+    print(formatted)
 
 
 if __name__ == "__main__":
