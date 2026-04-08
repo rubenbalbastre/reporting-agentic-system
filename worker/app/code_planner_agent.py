@@ -1,9 +1,10 @@
+from pathlib import Path
 from dotenv import load_dotenv
 from agents import Agent, function_tool
 from pydantic import BaseModel
 
-from database_agent import build_database_agent
-from common_tools import think_tool
+from .database_agent import build_database_agent
+from .common_tools import think_tool
 
 
 # -------------------------------------------------------------------
@@ -29,7 +30,7 @@ class CodePlan(BaseModel):
 
 
 def build_code_planner_agent() -> Agent:
-    load_dotenv("../.env")
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
     return Agent(
         name="Code planner",
         instructions=(
@@ -51,4 +52,3 @@ def build_code_planner_agent() -> Agent:
             think_tool
         ]
     )
-

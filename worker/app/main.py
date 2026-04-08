@@ -1,6 +1,7 @@
+from pathlib import Path
 from fastapi import FastAPI
-from code_planner_agent import build_code_planner_agent
-from code_executor_agent import build_code_executor_agent
+from .code_planner_agent import build_code_planner_agent
+from .code_executor_agent import build_code_executor_agent
 from agents import Runner
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -11,7 +12,7 @@ from contextlib import asynccontextmanager
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # --- startup logic ---
-    load_dotenv("../.env")
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
     OpenAIAgentsInstrumentor().instrument()
 
     langfuse = get_client()

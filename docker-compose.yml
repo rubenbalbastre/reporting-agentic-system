@@ -25,6 +25,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/reporting}
+      - ARTIFACT_WORKER_URL=${ARTIFACT_WORKER_URL:-http://worker:5000}
       - LANGFUSE_HOST=${LANGFUSE_HOST:-http://langfuse-web:3000}
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}

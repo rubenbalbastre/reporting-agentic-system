@@ -1,5 +1,6 @@
 
 import asyncio
+import os
 
 import requests
 from dotenv import load_dotenv
@@ -11,13 +12,18 @@ load_dotenv("../.env")
 
 @function_tool
 def call_artifact_worker(content: str) -> str:
-    response = requests.post(
-        "http://localhost:5000/invoke/",
-        json={
-            "query": content
-        }
-    )
-    return response.json().get("result", "")
+    worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
+    endpoint = f"{worker_url.rstrip('/')}/invoke/"
+    try:
+        response = requests.post(
+            endpoint,
+            json={"query": content},
+            timeout=30,
+        )
+        response.raise_for_status()
+        return response.json().get("result", "")
+    except requests.RequestException as exc:
+        return f"Artifact worker request failed: {exc}"
 
 
 report_assistant = Agent(
