@@ -163,7 +163,7 @@ def build_database_agent() -> Agent:
         name="SQL assistant",
         instructions="You must think if the user's question can be answered by querying the database. If it can, you should generate SQL queries based on the user's question. You should only respond with the SQL query and nothing else.",
         model="gpt-5.4-nano",
-        # output_type=DataBaseInspection,
+        output_type=DataBaseInspection,
         tools=[
             get_database_schema,
             get_unique_values,
@@ -180,4 +180,4 @@ if __name__ == "__main__":
     import asyncio
     agent = build_database_agent()
     result = asyncio.run(Runner.run(agent, "Can you answer questions about total sales by product category in the last month?"))
-    print(result)
+    print(result.final_output)
