@@ -10,29 +10,28 @@ from agents import Agent, Runner, function_tool
 load_dotenv("../.env")
 
 
-@function_tool
-def call_artifact_worker(content: str) -> str:
-    worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
-    endpoint = f"{worker_url.rstrip('/')}/invoke/"
-    try:
-        response = requests.post(
-            endpoint,
-            json={"query": content},
-            timeout=300,
-        )
-        response.raise_for_status()
-        return response.json().get("result", "")
-    except requests.RequestException as exc:
-        return f"Artifact worker request failed: {exc}"
-
-
 report_assistant = Agent(
     name="Report assistant",
     instructions="You must generate a report to answer ther user's question. You should only respond with the report and nothing else.",
     model="gpt-5.4-nano"
 )
 
-def build_main_agent() -> Agent:
+def build_main_agent(report_id: int) -> Agent:
+    @function_tool
+    def call_artifact_worker(content: str) -> str:
+        worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
+        endpoint = f"{worker_url.rstrip('/')}/invoke/"
+        try:
+            response = requests.post(
+                endpoint,
+                json={"query": content, "report_id": report_id},
+                timeout=300,
+            )
+            response.raise_for_status()
+            return response.json().get("result", "")
+        except requests.RequestException as exc:
+            return f"Artifact worker request failed: {exc}"
+
     agent = Agent(
         name="Main agent",
         instructions=(
@@ -53,7 +52,7 @@ def build_main_agent() -> Agent:
 
 
 async def main() -> None:
-    agent = build_main_agent()
+    agent = build_main_agent(report_id=1)
     result = await Runner.run(agent, "Create a report with the total sales for each product category in the last month.")
     print(result.final_output)
 

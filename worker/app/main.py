@@ -37,7 +37,11 @@ def health() -> dict[str, str]:
 @app.post("/invoke/")
 async def invoke(request: dict) -> dict:
     planner_code_agent = build_code_planner_agent()
-    code_executor_agent = build_code_executor_agent()
+    report_id = request["report_id"]
+    session_id = f"report_{report_id}"
+    workspace_dir = str(Path("workspace") / session_id)
+
+    code_executor_agent = build_code_executor_agent(workspace_dir=workspace_dir)
 
     # get plan
     plan_result = await Runner.run(planner_code_agent, request["query"])
@@ -53,7 +57,7 @@ async def invoke(request: dict) -> dict:
         execution_result = await Runner.run(code_executor_agent, steps_text)
         out = execution_result.final_output
         
-    return {"result": out}
+    return {"result": out, "session_id": session_id}
 
 
 def main():

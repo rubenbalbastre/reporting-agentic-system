@@ -113,7 +113,7 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
         raise HTTPException(status_code=400, detail="Message content is required")
 
     try:
-        main_agent = build_main_agent()
+        main_agent = build_main_agent(report_id=report_id)
         result = await Runner.run(main_agent, user_content)
         assistant_content = result.final_output
     except Exception:

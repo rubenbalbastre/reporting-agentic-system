@@ -39,6 +39,7 @@ def build_code_planner_agent() -> Agent:
             "This plan will guide the code assistant in implementing the solution."
             "You must inspect the database schema to be able to create a good plan."
             "Extra notes:"
+            "You are working on the OLIST dataset."
             "Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
             "It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
         ),
