@@ -40,6 +40,7 @@ def build_code_planner_agent() -> Agent:
             "You must inspect the database schema to be able to create a good plan."
             "Extra notes:"
             "You are working on the OLIST dataset."
+            "You can get postgress database url from DATABASE_URL environment variable and connect to it to inspect the schema or run queries if needed. "
             "Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
             "It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
         ),
