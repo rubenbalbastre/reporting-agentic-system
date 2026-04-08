@@ -28,8 +28,12 @@ report_assistant = Agent(
 
 def build_main_agent() -> Agent:
     agent = Agent(
-        name="Reporting agent",
-        instructions="You are a reporting agent that generates reports based on user questions. You should use the tools provided to you to generate the report. Always use the tools and never try to answer the question without using the tools.",
+        name="Main agent",
+        instructions=(
+            "You are a helpful assistant which helps users to generate reports based on their questions."
+            "To do that, you can call the artifact worker tool, which can answer questions and execute code to generate reports."
+            "You should only call the artifact worker tool and never generate a report by yourself."
+        ),
         model="gpt-5.4-nano",
         tools=[
             # report_assistant.as_tool(
