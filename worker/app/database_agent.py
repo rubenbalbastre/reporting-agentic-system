@@ -10,11 +10,14 @@ from collections import defaultdict
 load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 def get_db_connection():
+    database_url = os.getenv("DATABASE_URL")
+    if database_url:
+        return psycopg2.connect(database_url)
     return psycopg2.connect(
         dbname=os.getenv("DB_NAME", "reporting"),
         user=os.getenv("DB_USER", "postgres"),
         password=os.getenv("DB_PASSWORD", "postgres"),
-        host=os.getenv("DB_HOST", "localhost"),
+        host=os.getenv("DB_HOST", "postgres"),
         port=os.getenv("DB_PORT", 5432)
     )
 
