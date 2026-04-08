@@ -1,18 +1,14 @@
 import os
 from typing import Any, List, Literal, Optional
-
 from fastapi import FastAPI, HTTPException
-from langfuse import Langfuse
-
 from psycopg.rows import dict_row
 from psycopg_pool import ConnectionPool
+from agents import Runner
 
 from .schemas import Report, Message, CreateReportRequest, CreateMessageRequest
-from .graph import ReportingAgentGraph
+from .agent import build_main_agent
 
 
-app = FastAPI(title="Chat Reports Backend")
-langfuse_client: Optional[Langfuse] = None
 database_url = os.getenv(
     "DATABASE_URL",
     "postgresql://postgres:postgres@postgres:5432/reporting",
@@ -20,31 +16,31 @@ database_url = os.getenv(
 pool = ConnectionPool(conninfo=database_url, kwargs={"row_factory": dict_row})
 
 
-def init_langfuse() -> None:
-    global langfuse_client
-    public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
-    secret_key = os.getenv("LANGFUSE_SECRET_KEY")
-    host = os.getenv("LANGFUSE_HOST", "http://langfuse-web:3000")
-    if public_key and secret_key:
-        langfuse_client = Langfuse(
-            public_key=public_key,
-            secret_key=secret_key,
-            host=host,
-        )
+from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+from langfuse import get_client
+from contextlib import asynccontextmanager
+from dotenv import load_dotenv
 
 
-def start_trace(name: str, input_data: Any, metadata: Optional[dict[str, Any]] = None):
-    if not langfuse_client:
-        return None
-    try:
-        return langfuse_client.trace(name=name, input=input_data, metadata=metadata or {})
-    except Exception:
-        return None
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- startup logic ---
+    load_dotenv("../.env")
+    OpenAIAgentsInstrumentor().instrument()
+
+    langfuse = get_client()
+    if langfuse.auth_check():
+        print("Langfuse client is authenticated and ready!")
+    else:
+        print("Authentication failed. Please check your credentials and host.")
+
+    yield  # <-- app is running here
+
+    # --- shutdown logic (optional) ---
+    print("Shutting down worker...")
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    init_langfuse()
+app = FastAPI(title="Chat Reports Backend", lifespan=lifespan)
 
 
 @app.get("/api/reports")
@@ -111,38 +107,17 @@ def list_messages(report_id: int) -> List[Message]:
 
 @app.post("/api/reports/{report_id}/messages", status_code=201)
 async def create_message(report_id: int, payload: CreateMessageRequest):
-    trace = start_trace(
-        "create_message",
-        input_data={"report_id": report_id, "content": payload.content}
-    )
-    content = payload.content.strip()
-    if not content:
+
+    user_content = payload.content.strip()
+    if not user_content:
         raise HTTPException(status_code=400, detail="Message content is required")
 
-    assistant_content = f"Got it. You said: {content}"
-    generation = trace.generation(name="openai_response") if trace else None
     try:
-        reporting_agent = ReportingAgentGraph()
-        response = await reporting_agent.ainvoke(
-            {
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a concise analytics reporting assistant helping refine report drafts.",
-                    },
-                    {"role": "user", "content": content},
-                ]
-            }
-        )
-        generated = (response.get("output_text") or "").strip()
-        if generated:
-            assistant_content = generated
-        if generation:
-            generation.end(output=assistant_content)
+        main_agent = build_main_agent()
+        result = await Runner.run(main_agent, user_content)
+        assistant_content = result.final_output
     except Exception:
         assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
-        if trace:
-            trace.event(name="openai_error", input={"report_id": report_id})
 
     with pool.connection() as conn:
         with conn.cursor() as cur:
@@ -176,7 +151,7 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
                 VALUES (%s, 'user', %s)
                 RETURNING id, %s AS report_id, role, content, created_at;
                 """,
-                (conversation_id, content, report_id),
+                (conversation_id, user_content, report_id),
             )
             user_row = cur.fetchone()
 
@@ -193,25 +168,8 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
 
     user_message = Message(**user_row)
     assistant_message = Message(**assistant_row)
-    if trace:
-        trace.update(
-            output={
-                "report_id": report_id,
-                "user_message_id": user_message.id,
-                "assistant_message_id": assistant_message.id,
-            }
-        )
+
     return {"messages": [user_message, assistant_message]}
-
-
-@app.on_event("shutdown")
-def on_shutdown() -> None:
-    if langfuse_client:
-        try:
-            langfuse_client.flush()
-        except Exception:
-            pass
-    pool.close()
 
 
 @app.get("/health")
