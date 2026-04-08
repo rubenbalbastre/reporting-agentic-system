@@ -59,9 +59,10 @@ def list_files(path: str = ".") -> str:
     if dir_path.is_file():
         return path
 
+    workspace_root = WORKSPACE.resolve()
     items = []
     for p in sorted(dir_path.rglob("*")):
-        rel = p.relative_to(WORKSPACE)
+        rel = p.relative_to(workspace_root)
         suffix = "/" if p.is_dir() else ""
         items.append(f"{rel}{suffix}")
 
