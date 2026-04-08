@@ -8,12 +8,6 @@ from agents import Agent, Runner, function_tool
 
 load_dotenv("../.env")
 
-sql_assistant = Agent(
-    name="SQL assistant",
-    instructions="You must generate SQL queries based on the user's question. You should only respond with the SQL query and nothing else.",
-    model="gpt-5.4-nano",
-)
-
 
 @function_tool
 def call_artifact_worker(content: str) -> str:
@@ -38,10 +32,6 @@ def build_main_agent() -> Agent:
         instructions="You are a reporting agent that generates reports based on user questions. You should use the tools provided to you to generate the report. Always use the tools and never try to answer the question without using the tools.",
         model="gpt-5.4-nano",
         tools=[
-            sql_assistant.as_tool(
-                tool_name="sql_assistant",
-                tool_description="Tool to generate SQL queries based on the user's question."
-            ), 
             report_assistant.as_tool(
                 tool_name="report_assistant",
                 tool_description="Tool to generate reports based on the user's question."

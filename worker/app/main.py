@@ -1,5 +1,6 @@
 from fastapi import FastAPI
-from .code_agent import build_code_executor_agent, build_code_planner_agent
+from .code_planner_agent import build_code_planner_agent
+from .code_executor_agent import build_code_executor_agent
 from agents import Runner
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client

@@ -3,52 +3,13 @@ import subprocess
 from pathlib import Path
 from agents import Agent, function_tool
 
+from .common_tools import think_tool, finish_tool
 
 load_dotenv("../.env")
 
 
 # -------------------------------------------------------------------
-# Tools
-# -------------------------------------------------------------------
-
-
-@function_tool
-def think_tool(reflection: str) -> str:
-    """Tool for strategic reflection on research progress and decision-making.
-
-    Use this tool after each search to analyze results and plan next steps systematically.
-    This creates a deliberate pause in the research workflow for quality decision-making.
-
-    When to use:
-    - After receiving search results: What key information did I find?
-    - Before deciding next steps: Do I have enough to answer comprehensively?
-    - When assessing research gaps: What specific information am I still missing?
-    - Before concluding research: Can I provide a complete answer now?
-
-    Reflection should address:
-    1. Analysis of current findings - What concrete information have I gathered?
-    2. Gap assessment - What crucial information is still missing?
-    3. Quality evaluation - Do I have sufficient evidence/examples for a good answer?
-    4. Strategic decision - Should I continue searching or provide my answer?
-
-    Args:
-        reflection: Your detailed reflection on research progress, findings, gaps, and next steps
-
-    Returns:
-        Confirmation that reflection was recorded for decision-making
-    """
-    return f"Reflection recorded: {reflection}"
-
-
-@function_tool
-def finish_tool():
-    """Tool to signal completition of the task"""
-    return "Task completed"
-
-
-
-# -------------------------------------------------------------------
-# Workspace
+# Workspace tools
 # -------------------------------------------------------------------
 
 WORKSPACE = Path("./workspace")
@@ -139,38 +100,6 @@ def run_python(entrypoint: str, timeout: int = 10) -> str:
 # -------------------------------------------------------------------
 # Agent
 # -------------------------------------------------------------------
-
-from pydantic import BaseModel, Field
-from typing import Literal, List, Optional
-
-
-class PlanStep(BaseModel):
-    step_id: int
-    action: Literal["list_files", "read_file", "write_file", "run_python", "think_tool"]
-    target: Optional[str] = None
-    reason: str
-
-
-class CodePlan(BaseModel):
-    status: Literal["needs_more_info", "ready_to_execute"]
-    missing_information: List[str] = Field(default_factory=list)
-    clarification_question: Optional[str] = None
-    steps: List[PlanStep] = Field(default_factory=list)
-
-
-def build_code_planner_agent() -> Agent:
-    return Agent(
-        name="Code planner",
-        instructions=(
-            "You are a code planner. Your task is to create a high-level plan for writing a Python script that answers the user's question. "
-            "Your plan should break down the problem into smaller steps, identify what functions or classes to create, and outline the logic flow."
-            "This plan will guide the code assistant in implementing the solution."
-            "Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
-            "It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
-        ),
-        model="gpt-5.4-nano",
-        output_type=CodePlan
-    )
 
 
 def build_code_executor_agent() -> Agent:
