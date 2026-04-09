@@ -32,6 +32,7 @@ services:
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
     volumes:
       - ./backend:/app
+      - shared_data:/data/shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -58,13 +59,16 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - DATABASE_URL=${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/reporting}
+      - WORKSPACE_ROOT=${WORKSPACE_ROOT:-/data/shared/jobs}
       - LANGFUSE_HOST=${LANGFUSE_HOST:-http://langfuse-web:3000}
       - LANGFUSE_PUBLIC_KEY=${LANGFUSE_PUBLIC_KEY:-}
       - LANGFUSE_SECRET_KEY=${LANGFUSE_SECRET_KEY:-}
     volumes:
       - ./worker:/app
+      - shared_data:/data/shared
     depends_on:
       postgres:
         condition: service_healthy
 volumes:
   pg_data:
+  shared_data:

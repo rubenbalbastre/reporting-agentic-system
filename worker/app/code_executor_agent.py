@@ -21,9 +21,15 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     workspace.mkdir(parents=True, exist_ok=True)
 
     def safe_path(rel_path: str) -> Path:
-        candidate = (workspace / rel_path).resolve()
-        if not str(candidate).startswith(str(workspace)):
-            raise ValueError("Path escapes workspace")
+        raw = Path(rel_path)
+        if raw.is_absolute():
+            raise ValueError("Path must be relative to workspace")
+
+        candidate = (workspace / raw).resolve()
+        try:
+            candidate.relative_to(workspace)
+        except ValueError as exc:
+            raise ValueError("Path escapes workspace") from exc
         return candidate
 
     @function_tool

@@ -41,7 +41,8 @@ def health() -> dict[str, str]:
 async def invoke(request: InvokeRequest) -> dict:
 
     session_id = f"report_{request.report_id}"
-    workspace_dir = str(Path("workspace") / session_id)
+    workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs"))
+    workspace_dir = str(workspace_root / session_id)
 
     planner_code_agent = build_code_planner_agent()
     code_executor_agent = build_code_executor_agent(workspace_dir=workspace_dir)
@@ -72,7 +73,7 @@ if __name__ == "__main__":
     with TestClient(app) as client:
 
         response = client.post("/invoke", json={
-            "query": "Can you answer questions about total sales by product category for january 2017?",
+            "query": "Can you answer questions about total sales by product category for january 2017? Provide me a first result. If you need more information to answer, ask me for it later.",
             "report_id": 501,
         })
         print(response.status_code)
