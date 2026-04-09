@@ -1,38 +1,46 @@
 from agents import function_tool, Agent
 from pathlib import Path
+from app.workspace_paths import (
+    get_report_workspace,
+    get_report_markdown_path,
+    resolve_workspace_relative_path,
+)
 
 
-# Base directory for reports
-REPORTS_DIR = Path("workspace/")
-REPORTS_DIR.mkdir(exist_ok=True)
+def build_report_agent(report_id: int) -> Agent:
+    workspace = get_report_workspace(report_id)
 
-
-def _get_report_path(report_id: str) -> Path:
-    """Resolve report_id to a markdown file path."""
-    safe_id = report_id.replace(" ", "_").lower()
-    return REPORTS_DIR / f"{safe_id}" / "report.md"
-
-
-def build_report_agent(report_id: str) -> Agent:
+    def safe_path(rel_path: str) -> Path:
+        return resolve_workspace_relative_path(workspace, rel_path)
 
     @function_tool
-    def create_report(content: str) -> str:
-        """
-        Create or overwrite a report with full markdown content.
-        """
-        path = _get_report_path(report_id)
-        path.write_text(content, encoding="utf-8")
-        return f"Report '{report_id}' saved at {path}"
-
+    def read_file(path: str) -> str:
+        """Read a text file from the workspace."""
+        file_path = safe_path(path)
+        return file_path.read_text(encoding="utf-8")
 
     @function_tool
-    def get_report() -> str:
+    def list_files(path: str = ".") -> str:
+        """List files recursively inside a workspace directory."""
+        dir_path = safe_path(path)
+        if not dir_path.exists():
+            return f"{path} does not exist"
+        if dir_path.is_file():
+            return path
+
+        items = []
+        for p in sorted(dir_path.rglob("*")):
+            rel = p.relative_to(workspace)
+            suffix = "/" if p.is_dir() else ""
+            items.append(f"{rel}{suffix}")
+        return "\n".join(items) if items else "(empty)"
+
+    @function_tool
+    def read_report() -> str:
         """
         Retrieve the full markdown content of a report.
         """
-        path = _get_report_path(report_id)
-        if not path.exists():
-            raise FileNotFoundError(f"Report '{report_id}' does not exist.")
+        path = get_report_markdown_path(report_id)
         return path.read_text(encoding="utf-8")
 
 
@@ -43,11 +51,7 @@ def build_report_agent(report_id: str) -> Agent:
 
         heading must match exactly (e.g., "## Results").
         """
-        path = _get_report_path(report_id)
-
-        if not path.exists():
-            raise FileNotFoundError(f"Report '{report_id}' does not exist.")
-
+        path = get_report_markdown_path(report_id)
         text = path.read_text(encoding="utf-8")
         lines = text.splitlines()
 
@@ -85,10 +89,9 @@ def build_report_agent(report_id: str) -> Agent:
     return Agent(
         name="Report agent",
         instructions=(
-            "You are a helpful assistant which helps users to generate reports based on their questions."
-            "To do that, you can create a new report, update specific sections of the report, or retrieve the full report content."
+            "You must update a markdown report based on the user's question and results from the artifact worker, which you can find in the workspace using list_files and read_file tools."
             "Use the provided tools to manage the report content in markdown format."
         ),
         model="gpt-5.4-nano",
-        tools=[create_report, get_report, update_report_section],
+        tools=[read_report, update_report_section, list_files, read_file],
     )

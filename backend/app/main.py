@@ -8,6 +8,7 @@ from agents import Runner
 from pathlib import Path
 from app.schemas import Report, Message, CreateReportRequest, CreateMessageRequest
 from app.agent import build_main_agent
+from app.workspace_paths import get_report_markdown_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
 from contextlib import asynccontextmanager
@@ -132,6 +133,16 @@ def _persist_message_pair(report_id: int, user_content: str, assistant_content: 
     return Message(**user_row), Message(**assistant_row)
 
 
+def _write_report_markdown(report: Report) -> None:
+    report_path = get_report_markdown_path(report.id)
+    content = (
+        f"# {report.title}\n\n"
+        f"- Report ID: {report.id}\n"
+        f"- Created At: {report.created_at.isoformat()}\n"
+    )
+    report_path.write_text(content, encoding="utf-8")
+
+
 @app.get("/reports")
 def list_reports()-> List[Report]:
     with get_db_connection() as conn:
@@ -170,7 +181,9 @@ def create_report(payload: CreateReportRequest) -> Report:
                 (report_id,),
             )
         conn.commit()
-    return Report(**row)
+    report = Report(**row)
+    _write_report_markdown(report)
+    return report
 
 
 @app.get("/reports/{report_id}/messages")
@@ -235,15 +248,8 @@ if __name__ == "__main__":
 
     with TestClient(app) as client:
 
-        # response = client.post("/reports/30/messages", json={
-        #     "content": "Can you answer questions about total sales by product category for january 2017?",
-        # })
-        # print(response.status_code)
-        # print(response.json())
-        response = client.get("/health")
+        response = client.post("/reports/30/messages", json={
+            "content": "Can you answer questions about total sales by product category for january 2017?",
+        })
         print(response.status_code)
-        # response = client.get("/reports")
-        # print(response.status_code)
-        # response = client.get("/reports/1/messages")
-        # print(response.status_code)
-        # print(response.json())
+        print(response.json())
