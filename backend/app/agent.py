@@ -3,6 +3,7 @@ import asyncio
 import os
 import requests
 from agents import Agent, Runner, function_tool
+from opentelemetry.propagate import inject
 from app.report_agent import build_report_agent
 
 
@@ -11,10 +12,13 @@ def build_main_agent(report_id: int) -> Agent:
     def call_artifact_worker(content: str) -> str:
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
         endpoint = f"{worker_url.rstrip('/')}/invoke"
+        headers: dict[str, str] = {}
+        inject(headers)
         try:
             response = requests.post(
                 endpoint,
                 json={"query": content, "report_id": report_id},
+                headers=headers,
                 timeout=300,
             )
             response.raise_for_status()
