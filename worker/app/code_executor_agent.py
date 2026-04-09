@@ -2,7 +2,13 @@ import subprocess
 from pathlib import Path
 from agents import Agent, function_tool
 
-from .common_tools import think_tool, finish_tool
+from app.common_tools import think_tool
+from app.database_agent import (
+    get_database_schema,
+    get_unique_values,
+    get_column_stats,
+    preview_table
+)
 
 
 # -------------------------------------------------------------------
@@ -86,9 +92,13 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
         ),
         model="gpt-5.4-nano",
         tools=[
-            think_tool, finish_tool,
+            # think_tool,
             write_file, read_file, list_files,
-            run_python
+            run_python,
+            get_database_schema,
+            get_unique_values,
+            get_column_stats,
+            preview_table,
         ]
     )
     return code_agent

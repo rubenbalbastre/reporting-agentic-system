@@ -1,7 +1,8 @@
+import os
 from pathlib import Path
 from fastapi import FastAPI
-from .code_planner_agent import build_code_planner_agent
-from .code_executor_agent import build_code_executor_agent
+from app.code_planner_agent import build_code_planner_agent
+from app.code_executor_agent import build_code_executor_agent
 from agents import Runner
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -60,7 +61,10 @@ async def invoke(request: dict) -> dict:
     return {"result": out, "session_id": session_id}
 
 
-def main():
+if __name__ == "__main__":
+    if os.getenv("APP_ENV") != "docker":
+        load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
+        
     from fastapi.testclient import TestClient
 
     with TestClient(app) as client:
@@ -71,9 +75,3 @@ def main():
         })
         print(response.status_code)
         print(response.json())
-
-if __name__ == "__main__":
-    if os.getenv("APP_ENV") != "docker":
-        load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
-        
-    main()
