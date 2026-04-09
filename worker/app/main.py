@@ -66,10 +66,14 @@ def main():
     with TestClient(app) as client:
 
         response = client.post("/invoke/", json={
-            "query": "Can you answer questions about total sales by product category in the last month?"
+            "query": "Can you answer questions about total sales by product category for january 2017?",
+            "report_id": 501,
         })
         print(response.status_code)
         print(response.json())
 
 if __name__ == "__main__":
+    if os.getenv("APP_ENV") != "docker":
+        load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
+        
     main()

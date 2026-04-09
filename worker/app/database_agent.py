@@ -7,7 +7,6 @@ import psycopg2
 from psycopg2 import sql
 from collections import defaultdict
 
-load_dotenv(Path(__file__).resolve().parents[2] / ".env")
 
 def get_db_connection():
     database_url = os.getenv("DATABASE_URL")
@@ -181,6 +180,9 @@ def build_database_agent() -> Agent:
 if __name__ == "__main__":
     from agents import Runner
     import asyncio
+    if os.getenv("APP_ENV") != "docker":
+        load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
+        
     agent = build_database_agent()
     result = asyncio.run(Runner.run(agent, "Can you answer questions about total sales by product category in the last month?"))
     print(result.final_output)
