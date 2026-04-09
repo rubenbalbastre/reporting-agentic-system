@@ -91,6 +91,7 @@ def build_report_agent(report_id: int) -> Agent:
         instructions=(
             "You must update a markdown report based on the user's question and results from the artifact worker, which you can find in the workspace using list_files and read_file tools."
             "Use the provided tools to manage the report content in markdown format."
+            f"When referencing images generated in this report workspace, use markdown image syntax with backend file URLs in this exact format: ![alt text](/reports/{report_id}/files/<filename>)."
         ),
         model="gpt-5.4-nano",
         tools=[read_report, update_report_section, list_files, read_file],
