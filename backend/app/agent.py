@@ -1,15 +1,9 @@
 
 import asyncio
 import os
-
 import requests
-from dotenv import load_dotenv
-
 from agents import Agent, Runner, function_tool
-
-from .report_agent import build_report_agent
-
-load_dotenv("../.env")
+from app.report_agent import build_report_agent
 
 
 def build_main_agent(report_id: int) -> Agent:
@@ -32,13 +26,14 @@ def build_main_agent(report_id: int) -> Agent:
         name="Main agent",
         instructions=(
             "You are a helpful assistant which helps users to generate reports based on their questions."
-            "To do that, you can call the artifact worker tool, which can answer questions and execute code to generate reports."
-            "You should only call the artifact worker tool and never generate a report by yourself."
+            "To do that, you can call:"
+            "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables."
+            "* the report agent, which can create and update a markdown report based on the user's question and results from the artifact worker."
         ),
         model="gpt-5.4-nano",
         tools=[
             build_report_agent(report_id=report_id).as_tool(
-                tool_name="report_assistant",
+                tool_name="Report Agent",
                 tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
             ),
             call_artifact_worker
