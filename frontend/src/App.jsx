@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const VIEW = {
   ORIGINAL: "original",
@@ -197,6 +198,7 @@ export default function App() {
             </div>
             <div className="panel-content markdown-content">
               <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
                 components={{
                   img: ({ src, alt }) => (
                     <img src={resolveMarkdownAssetUrl(src)} alt={alt || ""} />
@@ -232,7 +234,9 @@ export default function App() {
                   {msg.status === "pending" ? (
                     "Thinking..."
                   ) : (
-                    <ReactMarkdown>{msg.content || ""}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content || ""}
+                    </ReactMarkdown>
                   )}
                 </div>
               ))}
