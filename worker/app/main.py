@@ -1,13 +1,15 @@
 import os
 from pathlib import Path
 from fastapi import FastAPI
-from app.code_planner_agent import build_code_planner_agent
-from app.code_executor_agent import build_code_executor_agent
 from agents import Runner
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
 from dotenv import load_dotenv
 from contextlib import asynccontextmanager
+
+from app.code_planner_agent import build_code_planner_agent
+from app.code_executor_agent import build_code_executor_agent
+from app.schemas import InvokeRequest
 
 
 @asynccontextmanager
@@ -35,17 +37,17 @@ def health() -> dict[str, str]:
     return {"status": "ok", "service": "worker"}
 
 
-@app.post("/invoke/")
-async def invoke(request: dict) -> dict:
-    planner_code_agent = build_code_planner_agent()
-    report_id = request["report_id"]
-    session_id = f"report_{report_id}"
+@app.post("/invoke")
+async def invoke(request: InvokeRequest) -> dict:
+
+    session_id = f"report_{request.report_id}"
     workspace_dir = str(Path("workspace") / session_id)
 
+    planner_code_agent = build_code_planner_agent()
     code_executor_agent = build_code_executor_agent(workspace_dir=workspace_dir)
 
     # get plan
-    plan_result = await Runner.run(planner_code_agent, request["query"])
+    plan_result = await Runner.run(planner_code_agent, request.query)
     plan_result = plan_result.final_output
 
     #  ask more info
@@ -69,7 +71,7 @@ if __name__ == "__main__":
 
     with TestClient(app) as client:
 
-        response = client.post("/invoke/", json={
+        response = client.post("/invoke", json={
             "query": "Can you answer questions about total sales by product category for january 2017?",
             "report_id": 501,
         })
