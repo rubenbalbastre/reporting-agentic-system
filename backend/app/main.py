@@ -143,6 +143,28 @@ def _write_report_markdown(report: Report) -> None:
     report_path.write_text(content, encoding="utf-8")
 
 
+def _ensure_report_markdown_exists(report_id: int) -> None:
+    report_path = get_report_markdown_path(report_id)
+    if report_path.exists():
+        return
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, created_at
+                FROM reports
+                WHERE id = %s;
+                """,
+                (report_id,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Report not found")
+
+    _write_report_markdown(Report(**row))
+
+
 @app.get("/reports")
 def list_reports()-> List[Report]:
     with get_db_connection() as conn:
@@ -215,6 +237,7 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
         raise HTTPException(status_code=400, detail="Message content is required")
 
     history_rows = _load_report_history(report_id)
+    _ensure_report_markdown_exists(report_id)
 
     try:
         main_agent = build_main_agent(report_id=report_id)
@@ -248,8 +271,9 @@ if __name__ == "__main__":
 
     with TestClient(app) as client:
 
-        response = client.post("/reports/30/messages", json={
-            "content": "Can you answer questions about total sales by product category for january 2017?",
+        response = client.post("/reports/50/messages", json={
+            "report_id": 50,
+            "payload": {"content": "Can you answer questions about total sales by product category for january 2017?"},
         })
         print(response.status_code)
         print(response.json())
