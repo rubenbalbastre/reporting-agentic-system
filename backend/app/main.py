@@ -2,6 +2,7 @@ import os
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
 import psycopg2
+from psycopg2.extras import RealDictCursor
 from agents import Runner
 from pathlib import Path
 from app.schemas import Report, Message, CreateReportRequest, CreateMessageRequest
@@ -13,7 +14,7 @@ from contextlib import asynccontextmanager
 
 def get_db_connection():
     database_url = os.getenv("DATABASE_URL")
-    return psycopg2.connect(database_url)
+    return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
 
 
 @asynccontextmanager
@@ -134,8 +135,7 @@ def list_reports()-> List[Report]:
                 """
             )
             rows = cur.fetchall()
-    fields = ["id", "title", "created_at"]
-    return [Report(**dict(zip(fields, row))) for row in rows]
+    return [Report(**row) for row in rows]
 
 
 @app.post("/reports", status_code=201)
@@ -182,8 +182,7 @@ def list_messages(report_id: int) -> List[Message]:
                 (report_id,),
             )
             rows = cur.fetchall()
-    fields = ["id", "report_id", "role", "content", "created_at"]
-    return [Message(**dict(zip(fields, row))) for row in rows]
+    return [Message(**row) for row in rows]
 
 
 @app.post("/reports/{report_id}/messages", status_code=201)
@@ -230,6 +229,10 @@ if __name__ == "__main__":
         # response = client.post("/api/reports/501/messages", json={
         #     "content": "Can you answer questions about total sales by product category for january 2017?",
         # })
-        response = client.post("/reports")
+        response = client.get("/health")
+        print(response.status_code)
+        response = client.get("/reports")
+        print(response.status_code)
+        response = client.get("/reports/1/messages")
         print(response.status_code)
         print(response.json())
