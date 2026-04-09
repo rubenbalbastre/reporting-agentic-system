@@ -89,7 +89,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
 
     additional_instructions = load_agent_notes()
     code_agent = Agent(
-        name="Code assistant",
+        name="code_assistant",
         instructions=(
             "You are a code assistant which is given a plan with steps to implement a Python script that answers the user's question. "
             "Write Python scripts into the workspace, inspect files when needed, "

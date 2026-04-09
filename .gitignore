@@ -15,6 +15,7 @@ htmlcov/
 venv/
 
 # Node / Next.js
+*/dist/*
 node_modules/
 .next/
 out/

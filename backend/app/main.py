@@ -8,6 +8,7 @@ from agents import Runner
 from pathlib import Path
 from app.schemas import Report, Message, CreateReportRequest, CreateMessageRequest
 from app.agent import build_main_agent
+from app.workspace_paths import get_report_markdown_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
 from contextlib import asynccontextmanager
@@ -132,6 +133,44 @@ def _persist_message_pair(report_id: int, user_content: str, assistant_content: 
     return Message(**user_row), Message(**assistant_row)
 
 
+def _write_report_markdown(report: Report) -> None:
+    report_path = get_report_markdown_path(report.id)
+    content = (
+        f"# {report.title}\n\n"
+        f"- Report ID: {report.id}\n"
+        f"- Created At: {report.created_at.isoformat()}\n"
+    )
+    report_path.write_text(content, encoding="utf-8")
+
+
+def _ensure_report_markdown_exists(report_id: int) -> None:
+    report_path = get_report_markdown_path(report_id)
+    if report_path.exists():
+        return
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, title, created_at
+                FROM reports
+                WHERE id = %s;
+                """,
+                (report_id,),
+            )
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Report not found")
+
+    _write_report_markdown(Report(**row))
+
+
+def _read_report_markdown(report_id: int) -> str:
+    _ensure_report_markdown_exists(report_id)
+    report_path = get_report_markdown_path(report_id)
+    return report_path.read_text(encoding="utf-8")
+
+
 @app.get("/reports")
 def list_reports()-> List[Report]:
     with get_db_connection() as conn:
@@ -170,7 +209,9 @@ def create_report(payload: CreateReportRequest) -> Report:
                 (report_id,),
             )
         conn.commit()
-    return Report(**row)
+    report = Report(**row)
+    _write_report_markdown(report)
+    return report
 
 
 @app.get("/reports/{report_id}/messages")
@@ -194,6 +235,14 @@ def list_messages(report_id: int) -> List[Message]:
     return [Message(**row) for row in rows]
 
 
+@app.get("/reports/{report_id}/markdown")
+def get_report_markdown(report_id: int) -> dict[str, str]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+    return {"content": _read_report_markdown(report_id)}
+
+
 @app.post("/reports/{report_id}/messages", status_code=201)
 async def create_message(report_id: int, payload: CreateMessageRequest):
 
@@ -202,6 +251,7 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
         raise HTTPException(status_code=400, detail="Message content is required")
 
     history_rows = _load_report_history(report_id)
+    _ensure_report_markdown_exists(report_id)
 
     try:
         main_agent = build_main_agent(report_id=report_id)
@@ -235,15 +285,9 @@ if __name__ == "__main__":
 
     with TestClient(app) as client:
 
-        # response = client.post("/reports/30/messages", json={
-        #     "content": "Can you answer questions about total sales by product category for january 2017?",
-        # })
-        # print(response.status_code)
-        # print(response.json())
-        response = client.get("/health")
+        response = client.post("/reports/50/messages", json={
+            "report_id": 50,
+            "payload": {"content": "Can you answer questions about total sales by product category for january 2017?"},
+        })
         print(response.status_code)
-        # response = client.get("/reports")
-        # print(response.status_code)
-        # response = client.get("/reports/1/messages")
-        # print(response.status_code)
-        # print(response.json())
+        print(response.json())

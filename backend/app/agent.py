@@ -23,19 +23,19 @@ def build_main_agent(report_id: int) -> Agent:
             return f"Artifact worker request failed: {exc}"
 
     agent = Agent(
-        name="Main agent",
+        name="main_agent",
         instructions=(
             "You are a helpful assistant which helps users to generate reports based on their questions."
             "To do that, you can call:"
-            "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables."
+            "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables. Also, it generates the markdown report."
             "* the report agent, which can create and update a markdown report based on the user's question and results from the artifact worker."
         ),
         model="gpt-5.4-nano",
         tools=[
-            # build_report_agent(report_id=report_id).as_tool(
-            #     tool_name="Report Agent",
-            #     tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
-            # ),
+            build_report_agent(report_id=report_id).as_tool(
+                tool_name="report_agent",
+                tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
+            ),
             call_artifact_worker
         ],
     )
