@@ -13,17 +13,10 @@ export default function App() {
   const [activeReportId, setActiveReportId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [markdown, setMarkdown] = useState("# Loading...");
+  const [markdown, setMarkdown] = useState("# Select or create a report");
 
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [viewMode, setViewMode] = useState(VIEW.ORIGINAL);
-
-  useEffect(() => {
-    fetch("/content.md")
-      .then((res) => res.text())
-      .then(setMarkdown)
-      .catch(() => setMarkdown("# Failed to load markdown"));
-  }, []);
 
   useEffect(() => {
     loadReports();
@@ -32,6 +25,9 @@ export default function App() {
   useEffect(() => {
     if (activeReportId) {
       loadMessages(activeReportId);
+      loadReportMarkdown(activeReportId);
+    } else {
+      setMarkdown("# Select or create a report");
     }
   }, [activeReportId]);
 
@@ -49,6 +45,16 @@ export default function App() {
     return data;
   }
 
+  async function loadReportMarkdown(reportId) {
+    const res = await fetch(`${API_BASE}/reports/${reportId}/markdown`);
+    const data = await res.json();
+    if (!res.ok) {
+      setMarkdown("# Failed to load report preview");
+      return;
+    }
+    setMarkdown(data.content || "");
+  }
+
   async function createReport() {
     const title = `Report ${reports.length + 1}`;
     const res = await fetch(`${API_BASE}/reports`, {
@@ -60,6 +66,7 @@ export default function App() {
     await loadReports();
     setActiveReportId(created.id);
     setMessages([]);
+    await loadReportMarkdown(created.id);
   }
 
   async function sendMessage() {
@@ -84,6 +91,7 @@ export default function App() {
 
     const data = await res.json();
     await loadMessages(reportId);
+    await loadReportMarkdown(reportId);
 
     if (!res.ok) {
       alert(data.detail || "Failed to send message");
@@ -123,6 +131,12 @@ export default function App() {
     return `layout ${withSidebar} empty`;
   }, [sidebarVisible, showReportPanel, showChatPanel]);
 
+  const activeReportTitle = useMemo(() => {
+    if (!activeReportId) return null;
+    const active = reports.find((r) => r.id === activeReportId);
+    return active?.title || null;
+  }, [reports, activeReportId]);
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -134,7 +148,12 @@ export default function App() {
           >
             📚
           </button>
-          <h1 className="app-title">IntelligentReport</h1>
+          <h1 className="app-title">
+            <span className="app-title-brand">Intelligent Report</span>
+            {activeReportTitle ? (
+              <span className="app-title-report"> {activeReportTitle}</span>
+            ) : null}
+          </h1>
         </div>
         <div className="view-controls">
           <button onClick={setOriginalView}>Original View</button>

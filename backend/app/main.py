@@ -165,6 +165,12 @@ def _ensure_report_markdown_exists(report_id: int) -> None:
     _write_report_markdown(Report(**row))
 
 
+def _read_report_markdown(report_id: int) -> str:
+    _ensure_report_markdown_exists(report_id)
+    report_path = get_report_markdown_path(report_id)
+    return report_path.read_text(encoding="utf-8")
+
+
 @app.get("/reports")
 def list_reports()-> List[Report]:
     with get_db_connection() as conn:
@@ -227,6 +233,14 @@ def list_messages(report_id: int) -> List[Message]:
             )
             rows = cur.fetchall()
     return [Message(**row) for row in rows]
+
+
+@app.get("/reports/{report_id}/markdown")
+def get_report_markdown(report_id: int) -> dict[str, str]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+    return {"content": _read_report_markdown(report_id)}
 
 
 @app.post("/reports/{report_id}/messages", status_code=201)

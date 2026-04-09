@@ -60,6 +60,14 @@ body {
   white-space: nowrap;
 }
 
+.app-title-brand {
+  color: #0b3a68;
+}
+
+.app-title-report {
+  color: #0071e3;
+}
+
 .icon-btn {
   width: 44px;
   height: 36px;
