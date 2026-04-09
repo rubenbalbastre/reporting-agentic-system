@@ -1,14 +1,16 @@
 import os
+import mimetypes
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from agents import Runner
 from pathlib import Path
 from app.schemas import Report, Message, CreateReportRequest, CreateMessageRequest
 from app.agent import build_main_agent
-from app.workspace_paths import get_report_markdown_path
+from app.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
 from contextlib import asynccontextmanager
@@ -241,6 +243,21 @@ def get_report_markdown(report_id: int) -> dict[str, str]:
         with conn.cursor() as cur:
             _ensure_report_exists(cur, report_id)
     return {"content": _read_report_markdown(report_id)}
+
+
+@app.get("/reports/{report_id}/files/{file_path:path}")
+def get_report_file(report_id: int, file_path: str):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+
+    workspace = get_report_workspace(report_id)
+    safe_file_path = resolve_workspace_relative_path(workspace, file_path)
+    if not safe_file_path.exists() or not safe_file_path.is_file():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    media_type, _ = mimetypes.guess_type(str(safe_file_path))
+    return FileResponse(path=safe_file_path, media_type=media_type)
 
 
 @app.post("/reports/{report_id}/messages", status_code=201)

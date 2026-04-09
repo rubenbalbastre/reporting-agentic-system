@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 const VIEW = {
   ORIGINAL: "original",
@@ -137,6 +138,12 @@ export default function App() {
     return active?.title || null;
   }, [reports, activeReportId]);
 
+  function resolveMarkdownAssetUrl(src) {
+    if (!src) return "";
+    if (src.startsWith("/reports/")) return `${API_BASE}${src}`;
+    return src;
+  }
+
   return (
     <div className="app-shell">
       <header className="topbar">
@@ -190,7 +197,16 @@ export default function App() {
               <h2>Report Preview</h2>
             </div>
             <div className="panel-content markdown-content">
-              <ReactMarkdown>{markdown}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  img: ({ src, alt }) => (
+                    <img src={resolveMarkdownAssetUrl(src)} alt={alt || ""} />
+                  ),
+                }}
+              >
+                {markdown}
+              </ReactMarkdown>
             </div>
           </section>
         )}
@@ -218,7 +234,9 @@ export default function App() {
                   {msg.status === "pending" ? (
                     "Thinking..."
                   ) : (
-                    <ReactMarkdown>{msg.content || ""}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {msg.content || ""}
+                    </ReactMarkdown>
                   )}
                 </div>
               ))}

@@ -33,13 +33,14 @@ def build_code_planner_agent() -> Agent:
     return Agent(
         name="code_planner",
         instructions=(
-            "You are a code planner. Your task is to create a high-level plan for writing a Python script that answers the user's question. "
+            "You are a code planner. Your task is to create a high-level plan for writing a Python script that answers the user's question."
             "Your plan should break down the problem into smaller steps, identify what functions or classes to create, and outline the logic flow."
             "This plan will guide the code assistant in implementing the solution."
             "You must inspect the database schema to be able to create a good plan."
-            "Extra notes:"
-            "Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
-            "It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
+            "Notes:\n"
+            "* Do not send instruction on checking requirements or installing dependencies. Assume all necessary libraries are available."
+            "* Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
+            "* It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
             + ("\n\nAdditional notes:\n" + additional_instructions if additional_instructions else "")
         ),
         model="gpt-5.4-nano",
