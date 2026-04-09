@@ -9,6 +9,7 @@ from app.database_agent import (
     get_column_stats,
     preview_table
 )
+from app.instructions import load_agent_notes
 
 
 # -------------------------------------------------------------------
@@ -86,6 +87,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
             f"--- STDERR ---\n{result.stderr}"
         )
 
+    additional_instructions = load_agent_notes()
     code_agent = Agent(
         name="Code assistant",
         instructions=(
@@ -95,6 +97,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
             "Prefer an iterative loop: inspect -> write -> run -> fix. "
             "Do not claim code works unless you executed it successfully."
             "You can get postgress database url from DATABASE_URL environment variable and connect to it to inspect the schema or run queries if needed. "
+            + ("\n\nAdditional notes:\n" + additional_instructions if additional_instructions else "")
         ),
         model="gpt-5.4-nano",
         tools=[

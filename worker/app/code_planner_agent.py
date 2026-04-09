@@ -1,9 +1,9 @@
-from pathlib import Path
 from agents import Agent, function_tool
 from pydantic import BaseModel
 
 from app.database_agent import build_database_agent
 from app.common_tools import think_tool
+from app.instructions import load_agent_notes
 
 
 # -------------------------------------------------------------------
@@ -29,6 +29,7 @@ class CodePlan(BaseModel):
 
 
 def build_code_planner_agent() -> Agent:
+    additional_instructions = load_agent_notes()
     return Agent(
         name="Code planner",
         instructions=(
@@ -37,10 +38,9 @@ def build_code_planner_agent() -> Agent:
             "This plan will guide the code assistant in implementing the solution."
             "You must inspect the database schema to be able to create a good plan."
             "Extra notes:"
-            "You are working on the OLIST dataset."
-            "You can get postgress database url from DATABASE_URL environment variable and connect to it to inspect the schema or run queries if needed. "
             "Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
             "It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
+            + ("\n\nAdditional notes:\n" + additional_instructions if additional_instructions else "")
         ),
         model="gpt-5.4-nano",
         output_type=CodePlan,
