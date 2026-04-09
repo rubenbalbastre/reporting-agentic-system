@@ -196,7 +196,11 @@ export default function App() {
               {messages.map((msg) => (
                 <div key={msg.id} className={`message ${msg.role}`}>
                   <strong>{msg.role}:</strong>{" "}
-                  {msg.status === "pending" ? "Thinking..." : msg.content}
+                  {msg.status === "pending" ? (
+                    "Thinking..."
+                  ) : (
+                    <ReactMarkdown>{msg.content || ""}</ReactMarkdown>
+                  )}
                 </div>
               ))}
             </div>
