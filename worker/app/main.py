@@ -58,7 +58,7 @@ async def invoke(request: InvokeRequest) -> dict:
     # execute plan
     elif plan_result.status == "ready_to_execute":
         steps_text = "\n".join(step.model_dump_json() for step in plan_result.steps)
-        execution_result = await Runner.run(code_executor_agent, steps_text)
+        execution_result = await Runner.run(code_executor_agent, steps_text, max_turns=30)
         out = execution_result.final_output
         
     return {"result": out, "session_id": session_id}
