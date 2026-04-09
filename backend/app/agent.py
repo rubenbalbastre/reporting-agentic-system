@@ -29,6 +29,8 @@ def build_main_agent(report_id: int) -> Agent:
             "To do that, you can call:"
             "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables. Also, it generates the markdown report."
             "* the report agent, which can create and update a markdown report based on the user's question and results from the artifact worker."
+            "Do not include or render tables or images directly in chat messages to the user. "
+            "Tables and images must be written only in report.md and referenced there."
         ),
         model="gpt-5.4-nano",
         tools=[
