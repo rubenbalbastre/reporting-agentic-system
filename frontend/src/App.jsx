@@ -35,34 +35,22 @@ export default function App() {
   }, [activeReportId]);
 
   async function loadReports() {
-    const res = await fetch("/api/reports");
+    const res = await fetch("/reports");
     const data = await res.json();
     setReports(data);
     if (!activeReportId && data.length) setActiveReportId(data[0].id);
   }
 
   async function loadMessages(reportId) {
-    const res = await fetch(`/api/reports/${reportId}/messages`);
+    const res = await fetch(`/reports/${reportId}/messages`);
     const data = await res.json();
     setMessages(data);
     return data;
   }
 
-  function hasPendingAssistant(messagesList) {
-    return messagesList.some((m) => m.role === "assistant" && m.status === "pending");
-  }
-
-  async function pollPendingMessages(reportId, maxTries = 30, intervalMs = 1000) {
-    for (let i = 0; i < maxTries; i += 1) {
-      await new Promise((resolve) => setTimeout(resolve, intervalMs));
-      const latest = await loadMessages(reportId);
-      if (!hasPendingAssistant(latest)) return;
-    }
-  }
-
   async function createReport() {
     const title = `Report ${reports.length + 1}`;
-    const res = await fetch("/api/reports", {
+    const res = await fetch("/reports", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -87,22 +75,18 @@ export default function App() {
     };
     setMessages((prev) => [...prev, optimisticUser]);
 
-    const res = await fetch(`/api/reports/${reportId}/messages`, {
+    const res = await fetch(`/reports/${reportId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
 
     const data = await res.json();
-    const latest = await loadMessages(reportId);
+    await loadMessages(reportId);
 
     if (!res.ok) {
-      alert(data.error || "Failed to send message");
+      alert(data.detail || "Failed to send message");
       return;
-    }
-
-    if (hasPendingAssistant(latest)) {
-      await pollPendingMessages(reportId);
     }
   }
 
