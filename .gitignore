@@ -37,3 +37,6 @@ temp/
 # Data artifacts
 data/shared/jobs/
 data/raw/
+
+# worker generated files
+*/workspace/*

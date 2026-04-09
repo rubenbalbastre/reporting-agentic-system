@@ -1,55 +1,140 @@
 import os
-from typing import Any, List, Literal, Optional
-
+from typing import Any, List
 from fastapi import FastAPI, HTTPException
-from langfuse import Langfuse
+from fastapi.middleware.cors import CORSMiddleware
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from agents import Runner
+from pathlib import Path
+from app.schemas import Report, Message, CreateReportRequest, CreateMessageRequest
+from app.agent import build_main_agent
+from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
+from langfuse import get_client
+from contextlib import asynccontextmanager
 
-from psycopg.rows import dict_row
-from psycopg_pool import ConnectionPool
 
-from .schemas import Report, Message, CreateReportRequest, CreateMessageRequest
-from .graph import ReportingAgentGraph
+def get_db_connection():
+    database_url = os.getenv("DATABASE_URL")
+    return psycopg2.connect(database_url, cursor_factory=RealDictCursor)
 
 
-app = FastAPI(title="Chat Reports Backend")
-langfuse_client: Optional[Langfuse] = None
-database_url = os.getenv(
-    "DATABASE_URL",
-    "postgresql://postgres:postgres@postgres:5432/reporting",
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    # --- startup logic ---
+    OpenAIAgentsInstrumentor().instrument()
+
+    langfuse = get_client()
+    if langfuse.auth_check():
+        print("Langfuse client is authenticated and ready!")
+    else:
+        print("Authentication failed. Please check your credentials and host.")
+
+    yield  # <-- app is running here
+
+    # --- shutdown logic (optional) ---
+    print("Shutting down worker...")
+
+
+app = FastAPI(title="Chat Reports Backend", lifespan=lifespan)
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:3001")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[frontend_origin],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
-pool = ConnectionPool(conninfo=database_url, kwargs={"row_factory": dict_row})
 
 
-def init_langfuse() -> None:
-    global langfuse_client
-    public_key = os.getenv("LANGFUSE_PUBLIC_KEY")
-    secret_key = os.getenv("LANGFUSE_SECRET_KEY")
-    host = os.getenv("LANGFUSE_HOST", "http://langfuse-web:3000")
-    if public_key and secret_key:
-        langfuse_client = Langfuse(
-            public_key=public_key,
-            secret_key=secret_key,
-            host=host,
-        )
+def _build_agent_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
+    recent = history_rows[-max_messages:]
+    lines = []
+    for row in recent:
+        role = row["role"]
+        content = row["content"]
+        lines.append(f"{role}: {content}")
+    lines.append(f"user: {user_content}")
+    history_text = "\n".join(lines) if lines else f"user: {user_content}"
+    return (
+        "Use the conversation history to keep context consistent.\n"
+        "Conversation:\n"
+        f"{history_text}"
+    )
 
 
-def start_trace(name: str, input_data: Any, metadata: Optional[dict[str, Any]] = None):
-    if not langfuse_client:
-        return None
-    try:
-        return langfuse_client.trace(name=name, input=input_data, metadata=metadata or {})
-    except Exception:
-        return None
+def _ensure_report_exists(cur: Any, report_id: int) -> None:
+    cur.execute("SELECT id FROM reports WHERE id = %s;", (report_id,))
+    if cur.fetchone() is None:
+        raise HTTPException(status_code=404, detail="Report not found")
 
 
-@app.on_event("startup")
-def on_startup() -> None:
-    init_langfuse()
+def _load_report_history(report_id: int) -> list[dict[str, Any]]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+            cur.execute(
+                """
+                SELECT m.role, m.content
+                FROM messages m
+                JOIN conversations c ON c.id = m.conversation_id
+                WHERE c.report_id = %s
+                ORDER BY m.id ASC;
+                """,
+                (report_id,),
+            )
+            return cur.fetchall()
 
 
-@app.get("/api/reports")
-def list_reports() -> List[Report]:
-    with pool.connection() as conn:
+def _get_or_create_conversation_id(cur: Any, report_id: int) -> int:
+    cur.execute(
+        """
+        SELECT id
+        FROM conversations
+        WHERE report_id = %s
+        ORDER BY id ASC
+        LIMIT 1;
+        """,
+        (report_id,),
+    )
+    conversation = cur.fetchone()
+    if conversation is not None:
+        return conversation["id"]
+
+    cur.execute(
+        "INSERT INTO conversations (report_id) VALUES (%s) RETURNING id;",
+        (report_id,),
+    )
+    return cur.fetchone()["id"]
+
+
+def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, content: str) -> dict[str, Any]:
+    cur.execute(
+        """
+        INSERT INTO messages (conversation_id, role, content)
+        VALUES (%s, %s, %s)
+        RETURNING id, %s AS report_id, role, content, created_at;
+        """,
+        (conversation_id, role, content, report_id),
+    )
+    return cur.fetchone()
+
+
+def _persist_message_pair(report_id: int, user_content: str, assistant_content: str) -> tuple[Message, Message]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+            conversation_id = _get_or_create_conversation_id(cur, report_id)
+            user_row = _insert_message(cur, conversation_id, report_id, "user", user_content)
+            assistant_row = _insert_message(cur, conversation_id, report_id, "assistant", assistant_content)
+        conn.commit()
+
+    return Message(**user_row), Message(**assistant_row)
+
+
+@app.get("/reports")
+def list_reports()-> List[Report]:
+    with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -62,10 +147,10 @@ def list_reports() -> List[Report]:
     return [Report(**row) for row in rows]
 
 
-@app.post("/api/reports", status_code=201)
+@app.post("/reports", status_code=201)
 def create_report(payload: CreateReportRequest) -> Report:
     title = payload.title.strip() or "New Report"
-    with pool.connection() as conn:
+    with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute(
                 """
@@ -88,9 +173,9 @@ def create_report(payload: CreateReportRequest) -> Report:
     return Report(**row)
 
 
-@app.get("/api/reports/{report_id}/messages")
+@app.get("/reports/{report_id}/messages")
 def list_messages(report_id: int) -> List[Message]:
-    with pool.connection() as conn:
+    with get_db_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("SELECT id FROM reports WHERE id = %s;", (report_id,))
             if cur.fetchone() is None:
@@ -109,111 +194,56 @@ def list_messages(report_id: int) -> List[Message]:
     return [Message(**row) for row in rows]
 
 
-@app.post("/api/reports/{report_id}/messages", status_code=201)
+@app.post("/reports/{report_id}/messages", status_code=201)
 async def create_message(report_id: int, payload: CreateMessageRequest):
-    trace = start_trace(
-        "create_message",
-        input_data={"report_id": report_id, "content": payload.content}
-    )
-    content = payload.content.strip()
-    if not content:
+
+    user_content = payload.content.strip()
+    if not user_content:
         raise HTTPException(status_code=400, detail="Message content is required")
 
-    assistant_content = f"Got it. You said: {content}"
-    generation = trace.generation(name="openai_response") if trace else None
+    history_rows = _load_report_history(report_id)
+
     try:
-        reporting_agent = ReportingAgentGraph()
-        response = await reporting_agent.ainvoke(
-            {
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are a concise analytics reporting assistant helping refine report drafts.",
-                    },
-                    {"role": "user", "content": content},
-                ]
-            }
-        )
-        generated = (response.get("output_text") or "").strip()
-        if generated:
-            assistant_content = generated
-        if generation:
-            generation.end(output=assistant_content)
+        main_agent = build_main_agent(report_id=report_id)
+        agent_input = _build_agent_input(history_rows, user_content)
+        result = await Runner.run(main_agent, agent_input)
+        assistant_content = result.final_output
     except Exception:
         assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
-        if trace:
-            trace.event(name="openai_error", input={"report_id": report_id})
 
-    with pool.connection() as conn:
-        with conn.cursor() as cur:
-            cur.execute("SELECT id FROM reports WHERE id = %s;", (report_id,))
-            if cur.fetchone() is None:
-                raise HTTPException(status_code=404, detail="Report not found")
+    user_message, assistant_message = _persist_message_pair(
+        report_id=report_id,
+        user_content=user_content,
+        assistant_content=assistant_content,
+    )
 
-            cur.execute(
-                """
-                SELECT id
-                FROM conversations
-                WHERE report_id = %s
-                ORDER BY id ASC
-                LIMIT 1;
-                """,
-                (report_id,),
-            )
-            conversation = cur.fetchone()
-            if conversation is None:
-                cur.execute(
-                    "INSERT INTO conversations (report_id) VALUES (%s) RETURNING id;",
-                    (report_id,),
-                )
-                conversation_id = cur.fetchone()["id"]
-            else:
-                conversation_id = conversation["id"]
-
-            cur.execute(
-                """
-                INSERT INTO messages (conversation_id, role, content)
-                VALUES (%s, 'user', %s)
-                RETURNING id, %s AS report_id, role, content, created_at;
-                """,
-                (conversation_id, content, report_id),
-            )
-            user_row = cur.fetchone()
-
-            cur.execute(
-                """
-                INSERT INTO messages (conversation_id, role, content)
-                VALUES (%s, 'assistant', %s)
-                RETURNING id, %s AS report_id, role, content, created_at;
-                """,
-                (conversation_id, assistant_content, report_id),
-            )
-            assistant_row = cur.fetchone()
-        conn.commit()
-
-    user_message = Message(**user_row)
-    assistant_message = Message(**assistant_row)
-    if trace:
-        trace.update(
-            output={
-                "report_id": report_id,
-                "user_message_id": user_message.id,
-                "assistant_message_id": assistant_message.id,
-            }
-        )
     return {"messages": [user_message, assistant_message]}
-
-
-@app.on_event("shutdown")
-def on_shutdown() -> None:
-    if langfuse_client:
-        try:
-            langfuse_client.flush()
-        except Exception:
-            pass
-    pool.close()
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "backend"}
+
+
+if __name__ == "__main__":
+
+    from dotenv import load_dotenv
+    if os.getenv("APP_ENV") != "docker":
+        load_dotenv(Path(__file__).resolve().parents[2] / ".env.local")
+        
+    from fastapi.testclient import TestClient
+
+    with TestClient(app) as client:
+
+        # response = client.post("/reports/30/messages", json={
+        #     "content": "Can you answer questions about total sales by product category for january 2017?",
+        # })
+        # print(response.status_code)
+        # print(response.json())
+        response = client.get("/health")
+        print(response.status_code)
+        # response = client.get("/reports")
+        # print(response.status_code)
+        # response = client.get("/reports/1/messages")
+        # print(response.status_code)
+        # print(response.json())
