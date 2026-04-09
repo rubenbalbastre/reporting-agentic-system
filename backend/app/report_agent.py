@@ -87,7 +87,7 @@ def build_report_agent(report_id: int) -> Agent:
         return f"Section '{heading}' updated in report '{report_id}'"
 
     return Agent(
-        name="Report agent",
+        name="report_agent",
         instructions=(
             "You must update a markdown report based on the user's question and results from the artifact worker, which you can find in the workspace using list_files and read_file tools."
             "Use the provided tools to manage the report content in markdown format."

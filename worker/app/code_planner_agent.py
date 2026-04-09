@@ -31,7 +31,7 @@ class CodePlan(BaseModel):
 def build_code_planner_agent() -> Agent:
     additional_instructions = load_agent_notes()
     return Agent(
-        name="Code planner",
+        name="code_planner",
         instructions=(
             "You are a code planner. Your task is to create a high-level plan for writing a Python script that answers the user's question. "
             "Your plan should break down the problem into smaller steps, identify what functions or classes to create, and outline the logic flow."
