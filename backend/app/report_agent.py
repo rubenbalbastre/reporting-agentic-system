@@ -42,12 +42,20 @@ def build_report_agent(report_id: int) -> Agent:
         """
         path = get_report_markdown_path(report_id)
         return path.read_text(encoding="utf-8")
-
+    
+    @function_tool
+    def update_full_report(content: str) -> str:
+        """
+        Update the full markdown content of a report.
+        """
+        path = get_report_markdown_path(report_id)
+        path.write_text(content, encoding="utf-8")
+        return f"Report '{report_id}' updated."
 
     @function_tool
     def update_report_section(heading: str, content: str) -> str:
         """
-        Replace or create a section in the markdown report.
+        Replace or create a section in the markdown report. Use only top-level or second-level headings (e.g., "# Summary" or "## Results") to identify sections. The
 
         heading must match exactly (e.g., "## Results").
         """
@@ -91,8 +99,11 @@ def build_report_agent(report_id: int) -> Agent:
         instructions=(
             "You must update a markdown report based on the user's question and results from the artifact worker, which you can find in the workspace using list_files and read_file tools."
             "Use the provided tools to manage the report content in markdown format."
+            "The report is organized into sections with headings. When asked to update a section, replace the content under that heading while keeping the rest of the report intact. If the section doesn't exist, create it at the end of the report."
+            "There are mainly 2 sections: insights and functional assumptions. The insights section should contain the key insights and information based on the data available, while the functional assumptions section should list any assumptions or limitations related to the data or analysis."
+            "Make the report simple and concise avoiding overcomplexity or repetition. Focus on providing clear insights and actionable information based on the data available."
             f"When referencing images generated in this report workspace, use markdown image syntax with backend file URLs in this exact format: ![alt text](/reports/{report_id}/files/<filename>)."
         ),
         model="gpt-5.4-nano",
-        tools=[read_report, update_report_section, list_files, read_file],
+        tools=[read_report, list_files, read_file, update_full_report],
     )
