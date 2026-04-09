@@ -6,6 +6,7 @@ const VIEW = {
   REPORT: "report",
   CHAT: "chat",
 };
+const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 
 export default function App() {
   const [reports, setReports] = useState([]);
@@ -35,14 +36,14 @@ export default function App() {
   }, [activeReportId]);
 
   async function loadReports() {
-    const res = await fetch("/reports");
+    const res = await fetch(`${API_BASE}/reports`);
     const data = await res.json();
     setReports(data);
     if (!activeReportId && data.length) setActiveReportId(data[0].id);
   }
 
   async function loadMessages(reportId) {
-    const res = await fetch(`/reports/${reportId}/messages`);
+    const res = await fetch(`${API_BASE}/reports/${reportId}/messages`);
     const data = await res.json();
     setMessages(data);
     return data;
@@ -50,7 +51,7 @@ export default function App() {
 
   async function createReport() {
     const title = `Report ${reports.length + 1}`;
-    const res = await fetch("/reports", {
+    const res = await fetch(`${API_BASE}/reports`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ title }),
@@ -75,7 +76,7 @@ export default function App() {
     };
     setMessages((prev) => [...prev, optimisticUser]);
 
-    const res = await fetch(`/reports/${reportId}/messages`, {
+    const res = await fetch(`${API_BASE}/reports/${reportId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),

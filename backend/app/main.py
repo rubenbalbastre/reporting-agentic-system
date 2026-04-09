@@ -1,6 +1,7 @@
 import os
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from agents import Runner
@@ -36,6 +37,14 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Chat Reports Backend", lifespan=lifespan)
+frontend_origin = os.getenv("FRONTEND_ORIGIN", "http://localhost:3001")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[frontend_origin],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 
 def _build_agent_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
@@ -226,13 +235,15 @@ if __name__ == "__main__":
 
     with TestClient(app) as client:
 
-        # response = client.post("/api/reports/501/messages", json={
+        # response = client.post("/reports/30/messages", json={
         #     "content": "Can you answer questions about total sales by product category for january 2017?",
         # })
+        # print(response.status_code)
+        # print(response.json())
         response = client.get("/health")
         print(response.status_code)
-        response = client.get("/reports")
-        print(response.status_code)
-        response = client.get("/reports/1/messages")
-        print(response.status_code)
-        print(response.json())
+        # response = client.get("/reports")
+        # print(response.status_code)
+        # response = client.get("/reports/1/messages")
+        # print(response.status_code)
+        # print(response.json())

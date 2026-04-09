@@ -10,7 +10,7 @@ def build_main_agent(report_id: int) -> Agent:
     @function_tool
     def call_artifact_worker(content: str) -> str:
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
-        endpoint = f"{worker_url.rstrip('/')}/invoke/"
+        endpoint = f"{worker_url.rstrip('/')}/invoke"
         try:
             response = requests.post(
                 endpoint,
@@ -32,10 +32,10 @@ def build_main_agent(report_id: int) -> Agent:
         ),
         model="gpt-5.4-nano",
         tools=[
-            build_report_agent(report_id=report_id).as_tool(
-                tool_name="Report Agent",
-                tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
-            ),
+            # build_report_agent(report_id=report_id).as_tool(
+            #     tool_name="Report Agent",
+            #     tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
+            # ),
             call_artifact_worker
         ],
     )
