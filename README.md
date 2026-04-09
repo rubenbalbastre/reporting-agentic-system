@@ -1,193 +1,169 @@
-# Agentic Analytics Reporting System
+# ReportingAgent
 
-## Overview
+Agentic analytics reporting system that turns chat requests into iteratively updated markdown reports.
 
-An **agent-based analytics system** that converts natural language requests into **iteratively refined reports** using:
+## UI Preview 🖼️
 
-- LLM planning
-- SQL generation + validation
-- Python-based analysis & visualization
-- Human-in-the-loop refinement
-- Observability with Langfuse
+<img src="docs/ui_screenshot.png" alt="ReportingAgent UI" width="900" />
 
-## Core Idea
+The tool works as an iterative reporting workflow:
+- You create or select a report from the left sidebar.
+- You ask questions or refinement requests in chat (right panel).
+- The backend agent decides how to answer, calls the worker when analysis/code execution is needed, and updates the report content.
+- The report preview (center panel) reloads from `report.md`, including generated charts/tables saved in the report workspace.
+- Every exchange is stored in Postgres so the report can be refined across multiple turns.
 
-This is **not a one-shot system**.
+## What It Does ✨
 
-It supports:
-- report generation
-- iterative refinement
-- versioned outputs
-- session-based workflows
+- Lets you create reports and refine them through chat.
+- Persists report conversations in Postgres.
+- Uses a backend orchestration agent plus a worker agent that can inspect DB schema, write/run Python, and generate report artifacts.
+- Stores each report in its own workspace directory (`report.md` + generated files).
+- Optionally sends traces to a self-hosted Langfuse stack.
 
-## Architecture
-
-```text
-User -> UI -> Backend (LangGraph)
-               |
-               v
-             Planner
-               |
-               v
-          SQL Generator
-               |
-               v
-           SQL Verifier
-               |
-               v
-            DB Executor
-               |
-               v
-        Artifact Worker (charts)
-               |
-               v
-          Report Writer
-```
-
-## Components
-
-### Frontend (Next.js)
-- Two-pane UI:
-  - left: report
-  - right: session/chat
-
-### Backend (FastAPI + LangGraph)
-- orchestrates workflow
-- manages sessions + iterations
-
-### Artifact Worker
-- generates charts/tables
-- no DB access
-- receives structured specs only
-
-### Database (Postgres)
-Stores:
-- sessions
-- messages
-- report versions
-- artifact metadata
-
-### Storage
-- shared volume for:
-  - parquet data
-  - generated artifacts
-
-### Observability (Langfuse)
-- traces workflow
-- logs prompts, latency, tokens
-
-## Iteration Model
-
-User can refine reports.
-
-Example:
-1. "Generate sales report"
-2. "Add breakdown by state"
-3. "Focus on delayed deliveries"
-
-System:
-- updates plan
-- reuses or recomputes data
-- updates report
-
-## Data Flow
-
-SQL:
-- executed only in backend
-- validated before execution
-
-Output:
+## Architecture 🏗️
 
 ```text
-/shared/jobs/<job_id>/query_result.parquet
+Frontend (React + Vite)
+  -> Backend API (FastAPI, /reports/*)
+      -> Main agent (OpenAI Agents SDK)
+          -> report_agent tool (reads/updates report markdown)
+          -> Worker API (/invoke)
+              -> Planner agent + code executor agent
+              -> Postgres inspection/query tools + Python execution
+
+Postgres stores app state (reports, conversations, messages)
+Shared volume stores per-report files under /data/shared/jobs/report_<id>/
 ```
 
-Artifacts:
+## Repository Layout 📁
 
 ```text
-/shared/jobs/<job_id>/outputs/
+backend/                 FastAPI API + main orchestration agent
+frontend/                React/Vite UI
+worker/                  FastAPI worker + planning/execution agents
+infra/postgres/          SQL schemas (app + Olist)
+scripts/                 Kaggle download/load helpers
+Makefile                 Main entrypoints for local Docker workflows
 ```
 
-## Safety
+## Requirements ✅
 
-- read-only SQL
-- schema-constrained queries
-- worker isolated (no DB access)
-- no arbitrary code execution
+- Docker + Docker Compose
+- OpenAI API key
+- (Optional) Kaggle credentials to load the Olist dataset
+- `.env.local` for local (non-Docker) backend/worker testing
 
-## Observability
+## Quick Start 🚀
 
-Tracked steps:
-
-```text
-report_request
-|-- plan
-|-- generate_sql
-|-- verify_sql
-|-- execute_sql
-|-- generate_artifacts
-`-- write_report
-```
-
-## Evaluation
-
-Metrics:
-- SQL correctness
-- report consistency
-- revision success rate
-- artifact correctness
-
-## Docker Setup
-
-Services:
-- frontend
-- backend
-- artifact_worker
-- postgres
-- langfuse stack
-
-Run:
+1. Copy environment file and fill the required values:
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.langfuse.yml up
+cp .env.example .env
 ```
 
-## Project Structure
+Minimum required variable:
+
+```bash
+OPENAI_API_KEY=sk-...
+```
+
+2. Start full stack (app + Langfuse):
+
+```bash
+make up
+```
+
+3. Initialize app schema (reports/conversations/messages):
+
+```bash
+make db-init
+```
+
+4. Open services:
+
+- Frontend: `http://localhost:3001`
+- Backend API: `http://localhost:8000`
+- Worker API: `http://localhost:5000`
+- Langfuse UI: `http://localhost:3002`
+
+## Make Targets 🛠️
+
+Use `make help` to print all targets.
+
+Common targets:
+
+- `make up` / `make down` / `make ps` / `make logs` (app + Langfuse)
+- `make stack-up` / `make stack-down` (app stack only)
+- `make langfuse-up` / `make langfuse-down` (Langfuse only)
+- `make db-init` (apply `infra/postgres/app_schema.sql`)
+
+## Load Olist Dataset (Optional) 📊
+
+The worker can inspect/query whatever is in Postgres. To load the Olist ecommerce dataset:
+
+1. Configure Kaggle auth (`KAGGLE_USERNAME` + `KAGGLE_KEY`, or `~/.kaggle/kaggle.json`).
+2. Run:
+
+```bash
+make kaggle-setup
+```
+
+Equivalent step-by-step:
+
+```bash
+make kaggle-prepare
+make kaggle-download
+make kaggle-load
+```
+
+This applies `infra/postgres/olist_schema.sql` and loads CSVs into `olist_*` tables.
+
+## Local Testing (Without Docker) 🧪
+
+For backend/worker local testing, create `.env.local` in the repository root.  
+This is required because both services load `.env.local` when `APP_ENV != docker`.
+
+## Core API Endpoints 🔌
+
+Backend (`:8000`):
+
+- `GET /health`
+- `GET /reports`
+- `POST /reports`
+- `GET /reports/{report_id}/messages`
+- `POST /reports/{report_id}/messages`
+- `GET /reports/{report_id}/markdown`
+- `GET /reports/{report_id}/files/{file_path}`
+
+Worker (`:5000`):
+
+- `GET /health`
+- `POST /invoke`
+
+## Report Workspaces 🗂️
+
+Each report gets a workspace folder:
 
 ```text
-project/
-|-- frontend/
-|-- backend/
-|-- worker/
-|-- data/
-|-- evals/
-|-- docker-compose.yml
-|-- docker-compose.langfuse.yml
-`-- README.md
+/data/shared/jobs/report_<report_id>/
+  report.md
+  ...generated files (images, scripts, outputs)
 ```
 
-## Key Features
+Images/files can be referenced from markdown through backend file routes, for example:
 
-- agentic workflow (LangGraph)
-- iterative report refinement
-- SQL + Python tool use
-- structured outputs
-- observability (Langfuse)
-- Dockerized system
+```md
+![Chart](/reports/12/files/sales_by_category.png)
+```
 
-## Future Work
+## Observability 👀
 
-- async jobs
-- caching
-- report diffing
-- auth system
-- advanced evals
+Langfuse instrumentation is enabled in backend and worker on startup. Set `LANGFUSE_*` variables in `.env` if you want traces persisted in the self-hosted Langfuse stack.
 
-## Summary
+## Notes 📝
 
-This project demonstrates a **production-style AI system** with:
-
-- multi-step orchestration
-- human-in-the-loop iteration
-- safe tool usage
-- observability and evaluation
+- Current frontend is React + Vite (not Next.js).
+- Compose services install dependencies on container startup (`pip install` / `npm install`) for development convenience.
+- `infra/postgres/init.sql` is currently a placeholder; app schema is applied via `make db-init`.
+- `.env.local` is required when running backend/worker outside Docker (the code loads it when `APP_ENV != docker`).
