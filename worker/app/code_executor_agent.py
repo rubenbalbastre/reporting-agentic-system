@@ -10,6 +10,7 @@ from app.database_agent import (
     preview_table
 )
 from app.instructions import load_agent_notes
+from app.prompts import build_code_executor_instructions
 
 
 # -------------------------------------------------------------------
@@ -90,15 +91,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     additional_instructions = load_agent_notes()
     code_agent = Agent(
         name="code_assistant",
-        instructions=(
-            "You are a code assistant which is given a plan with steps to implement a Python script that answers the user's question. "
-            "Write Python scripts into the workspace, inspect files when needed, "
-            "and execute them with run_python. "
-            "Prefer an iterative loop: inspect -> write -> run -> fix. "
-            "Do not claim code works unless you executed it successfully."
-            "You can get postgress database url from DATABASE_URL environment variable and connect to it to inspect the schema or run queries if needed. "
-            + ("\n\nAdditional notes:\n" + additional_instructions if additional_instructions else "")
-        ),
+        instructions=build_code_executor_instructions(additional_instructions),
         model="gpt-5.4-nano",
         tools=[
             # think_tool,

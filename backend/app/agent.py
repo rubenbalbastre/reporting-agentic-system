@@ -5,6 +5,7 @@ import requests
 from agents import Agent, Runner, function_tool
 from opentelemetry.propagate import inject
 from app.report_agent import build_report_agent
+from app.prompts import build_main_agent_instructions
 
 
 def build_main_agent(report_id: int) -> Agent:
@@ -28,17 +29,7 @@ def build_main_agent(report_id: int) -> Agent:
 
     agent = Agent(
         name="main_agent",
-        instructions=(
-            "You are a helpful assistant which helps users to generate reports based on their questions."
-            "To do that, you can call:"
-            "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables. Also, it generates the markdown report."
-            "* the report agent, which can create and update a markdown report based on the user's question and results from the artifact worker."
-            "When giving your final response:"
-            "* Very briefly summarize the insights and information you provided in the report, but do not repeat all the details. Focus on the key takeaways and actionable insights that the user can use."
-            "* Do not include technical details about how you generated the report or the tools you used. The user is only interested in the insights and information, not in the process."
-            "* Do not include or render tables or images directly in chat messages to the user. "
-            "* Tables and images must be written only in report.md and referenced there."
-        ),
+        instructions=build_main_agent_instructions(),
         model="gpt-5.4-nano",
         tools=[
             build_report_agent(report_id=report_id).as_tool(
