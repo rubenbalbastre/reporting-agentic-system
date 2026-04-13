@@ -11,6 +11,7 @@ from app.database_agent import (
 )
 from app.instructions import load_agent_notes
 from app.prompts import build_code_executor_instructions
+from app.shared_skills import search_shared_skills, read_shared_skill
 
 
 # -------------------------------------------------------------------
@@ -88,6 +89,25 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
             f"--- STDERR ---\n{result.stderr}"
         )
 
+    @function_tool
+    def search_agent_skills(query: str) -> str:
+        """Search shared skills by keyword and return matching filenames and previews."""
+        results = search_shared_skills(query=query, limit=10)
+        if not results:
+            return "No shared skills found"
+        lines = []
+        for item in results:
+            lines.append(f"- {item['filename']}: {item['preview']}")
+        return "\n".join(lines)
+
+    @function_tool
+    def read_agent_skill(filename: str) -> str:
+        """Read one shared skill file by filename."""
+        try:
+            return read_shared_skill(filename)
+        except FileNotFoundError as exc:
+            return f"Skill not found: {exc}"
+
     additional_instructions = load_agent_notes()
     code_agent = Agent(
         name="code_assistant",
@@ -101,6 +121,8 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
             get_unique_values,
             get_column_stats,
             preview_table,
+            search_agent_skills,
+            read_agent_skill,
         ]
     )
     return code_agent

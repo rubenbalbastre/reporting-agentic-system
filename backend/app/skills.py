@@ -55,23 +55,3 @@ def create_skill_from_request(request_text: str) -> dict[str, str]:
         "path": str(skill_path),
         "content": content,
     }
-
-
-def load_main_agent_skills(limit: int = 20) -> list[str]:
-    root = get_main_agent_skills_root()
-    if not root.exists():
-        return []
-
-    skill_files = sorted(
-        [p for p in root.glob("*.md") if p.is_file()],
-        key=lambda p: p.stat().st_mtime,
-        reverse=True,
-    )
-
-    loaded: list[str] = []
-    for path in skill_files[:limit]:
-        text = path.read_text(encoding="utf-8").strip()
-        if text:
-            loaded.append(text)
-
-    return loaded

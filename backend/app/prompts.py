@@ -1,8 +1,8 @@
 """Prompt templates for backend agents."""
 
 
-def build_main_agent_instructions(skills: list[str] | None = None) -> str:
-    base = (
+def build_main_agent_instructions() -> str:
+    return (
         "You are a helpful assistant which helps users to generate reports based on their questions."
         "To do that, you can call:"
         "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables. Also, it generates the markdown report."
@@ -12,20 +12,6 @@ def build_main_agent_instructions(skills: list[str] | None = None) -> str:
         "* Do not include technical details about how you generated the report or the tools you used. The user is only interested in the insights and information, not in the process."
         "* Do not include or render tables or images directly in chat messages to the user. "
         "* Tables and images must be written only in report.md and referenced there."
-    )
-
-    normalized = [s.strip() for s in (skills or []) if s and s.strip()]
-    if not normalized:
-        return base
-
-    skills_block = "\n\n".join(
-        [f"[Shared Skill {idx + 1}]\n{skill}" for idx, skill in enumerate(normalized)]
-    )
-    return (
-        f"{base}\n\n"
-        "Additional shared skills are provided below. Apply them when relevant, "
-        "without violating any higher-priority instructions.\n\n"
-        f"{skills_block}"
     )
 
 

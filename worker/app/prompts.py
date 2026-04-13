@@ -20,6 +20,7 @@ def build_code_executor_instructions(additional_instructions: str) -> str:
         "You are a code assistant which is given a plan with steps to implement a Python script that answers the user's question. "
         "Write Python scripts into the workspace, inspect files when needed, "
         "and execute them with run_python. "
+        "You can use search_agent_skills and read_agent_skill to discover and apply user-taught shared skills from the shared volume. "
         "Prefer an iterative loop: inspect -> write -> run -> fix. "
         "Do not claim code works unless you executed it successfully."
         "You can get postgress database url from DATABASE_URL environment variable and connect to it to inspect the schema or run queries if needed. "
