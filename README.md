@@ -135,6 +135,7 @@ Backend (`:8000`):
 - `POST /reports/{report_id}/messages`
 - `GET /reports/{report_id}/markdown`
 - `GET /reports/{report_id}/files/{file_path}`
+- `POST /agent/teach` (creates shared main-agent skills from UI requests)
 
 Worker (`:5000`):
 

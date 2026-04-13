@@ -6,6 +6,7 @@ from agents import Agent, Runner, function_tool
 from opentelemetry.propagate import inject
 from app.report_agent import build_report_agent
 from app.prompts import build_main_agent_instructions
+from app.skills import load_main_agent_skills
 
 
 def build_main_agent(report_id: int) -> Agent:
@@ -29,7 +30,7 @@ def build_main_agent(report_id: int) -> Agent:
 
     agent = Agent(
         name="main_agent",
-        instructions=build_main_agent_instructions(),
+        instructions=build_main_agent_instructions(skills=load_main_agent_skills()),
         model="gpt-5.4-nano",
         tools=[
             build_report_agent(report_id=report_id).as_tool(

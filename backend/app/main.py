@@ -8,8 +8,16 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 from agents import Runner
 from pathlib import Path
-from app.schemas import Report, Message, CreateReportRequest, CreateMessageRequest
+from app.schemas import (
+    Report,
+    Message,
+    CreateReportRequest,
+    CreateMessageRequest,
+    TeachAgentRequest,
+    TeachAgentResponse,
+)
 from app.agent import build_main_agent
+from app.skills import create_skill_from_request
 from app.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -285,6 +293,24 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
     )
 
     return {"messages": [user_message, assistant_message]}
+
+
+@app.post("/agent/teach", response_model=TeachAgentResponse, status_code=201)
+def teach_agent(payload: TeachAgentRequest) -> TeachAgentResponse:
+    content = payload.content.strip()
+    if not content:
+        raise HTTPException(status_code=400, detail="Teaching message content is required")
+
+    try:
+        created = create_skill_from_request(content)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to create shared skill: {exc}") from exc
+
+    return TeachAgentResponse(
+        message="Skill created and stored in shared volume",
+        skill_filename=created["filename"],
+        skill_path=created["path"],
+    )
 
 
 @app.get("/health")

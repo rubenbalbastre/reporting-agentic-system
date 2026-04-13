@@ -18,6 +18,10 @@ export default function App() {
 
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [viewMode, setViewMode] = useState(VIEW.ORIGINAL);
+  const [teachModalOpen, setTeachModalOpen] = useState(false);
+  const [teachInput, setTeachInput] = useState("");
+  const [teachStatus, setTeachStatus] = useState(null);
+  const [teachLoading, setTeachLoading] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -100,6 +104,42 @@ export default function App() {
     }
   }
 
+  async function submitTeachAgent() {
+    const content = teachInput.trim();
+    if (!content || teachLoading) return;
+
+    setTeachLoading(true);
+    setTeachStatus(null);
+    try {
+      const res = await fetch(`${API_BASE}/agent/teach`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setTeachStatus({
+          type: "error",
+          text: data.detail || "Failed to create skill",
+        });
+        return;
+      }
+
+      setTeachStatus({
+        type: "success",
+        text: `Saved as ${data.skill_filename}`,
+      });
+      setTeachInput("");
+    } catch (_err) {
+      setTeachStatus({
+        type: "error",
+        text: "Network error while creating skill",
+      });
+    } finally {
+      setTeachLoading(false);
+    }
+  }
+
   const showReportPanel = useMemo(() => {
     if (viewMode === VIEW.REPORT) return true;
     if (viewMode === VIEW.CHAT) return false;
@@ -163,6 +203,9 @@ export default function App() {
           </h1>
         </div>
         <div className="view-controls">
+          <button className="teach-btn" onClick={() => setTeachModalOpen(true)}>
+            Teach the Agent
+          </button>
           <button onClick={setOriginalView}>Original View</button>
           <button onClick={setExpandReportView}>Expand Report</button>
           <button onClick={setExpandChatView}>Expand Chat</button>
@@ -244,6 +287,49 @@ export default function App() {
           </section>
         )}
       </div>
+
+      {teachModalOpen && (
+        <div
+          className="modal-backdrop"
+          onClick={() => setTeachModalOpen(false)}
+          role="presentation"
+        >
+          <section
+            className="teach-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Teach the Agent"
+          >
+            <div className="panel-head">
+              <h2>Teach the Agent</h2>
+              <button onClick={() => setTeachModalOpen(false)}>Close</button>
+            </div>
+            <div className="panel-content teach-modal-content">
+              <div className="message user">
+                <strong>You:</strong> Describe a new behavior you want the main agent
+                to follow.
+              </div>
+              <textarea
+                value={teachInput}
+                onChange={(e) => setTeachInput(e.target.value)}
+                placeholder="Example: Always include a short executive summary with 3 bullet points."
+                rows={7}
+              />
+              <div className="teach-actions">
+                <button onClick={submitTeachAgent} disabled={teachLoading}>
+                  {teachLoading ? "Saving..." : "Save as Skill"}
+                </button>
+              </div>
+              {teachStatus && (
+                <div className={`teach-status ${teachStatus.type}`}>
+                  {teachStatus.text}
+                </div>
+              )}
+            </div>
+          </section>
+        </div>
+      )}
     </div>
   );
 }
