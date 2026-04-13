@@ -22,6 +22,9 @@ export default function App() {
   const [teachInput, setTeachInput] = useState("");
   const [teachStatus, setTeachStatus] = useState(null);
   const [teachLoading, setTeachLoading] = useState(false);
+  const [skills, setSkills] = useState([]);
+  const [skillsLoading, setSkillsLoading] = useState(false);
+  const [showSkills, setShowSkills] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -35,6 +38,14 @@ export default function App() {
       setMarkdown("# Select or create a report");
     }
   }, [activeReportId]);
+
+  useEffect(() => {
+    if (!teachModalOpen) {
+      setShowSkills(false);
+      return;
+    }
+    if (showSkills) loadSkills();
+  }, [teachModalOpen, showSkills]);
 
   async function loadReports() {
     const res = await fetch(`${API_BASE}/reports`);
@@ -130,6 +141,7 @@ export default function App() {
         text: `Saved as ${data.skill_filename}`,
       });
       setTeachInput("");
+      if (showSkills) await loadSkills();
     } catch (_err) {
       setTeachStatus({
         type: "error",
@@ -137,6 +149,23 @@ export default function App() {
       });
     } finally {
       setTeachLoading(false);
+    }
+  }
+
+  async function loadSkills() {
+    setSkillsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/agent/skills`);
+      const data = await res.json();
+      if (!res.ok) {
+        setSkills([]);
+        return;
+      }
+      setSkills(Array.isArray(data) ? data : []);
+    } catch (_err) {
+      setSkills([]);
+    } finally {
+      setSkillsLoading(false);
     }
   }
 
@@ -306,6 +335,32 @@ export default function App() {
               <button onClick={() => setTeachModalOpen(false)}>Close</button>
             </div>
             <div className="panel-content teach-modal-content">
+              <div className="teach-actions teach-actions-left">
+                <button onClick={() => setShowSkills((v) => !v)}>
+                  {showSkills ? "Hide learnt skills" : "Show learnt skills"}
+                </button>
+              </div>
+              {showSkills && (
+                <div className="skills-box">
+                  <h3>Existing Skills</h3>
+                  {skillsLoading ? (
+                    <div className="skills-empty">Loading skills...</div>
+                  ) : skills.length === 0 ? (
+                    <div className="skills-empty">No skills found yet.</div>
+                  ) : (
+                    <ul className="skills-list">
+                      {skills.map((skill) => (
+                        <li key={skill.skill_id} className="skills-item">
+                          <div className="skills-item-name">{skill.name}</div>
+                          <div className="skills-item-desc">
+                            {skill.description || "No description"}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
               <div className="message user">
                 <strong>You:</strong> Describe a new behavior you want the main agent
                 to follow.

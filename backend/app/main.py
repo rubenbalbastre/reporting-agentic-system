@@ -341,6 +341,11 @@ async def teach_agent(payload: TeachAgentRequest) -> TeachAgentResponse:
     )
 
 
+@app.get("/agent/skills", response_model=list[SkillSummary])
+def list_agent_skills() -> list[SkillSummary]:
+    return [SkillSummary(**item) for item in list_existing_skills()]
+
+
 @app.get("/health")
 def health() -> dict[str, str]:
     return {"status": "ok", "service": "backend"}
