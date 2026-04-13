@@ -91,20 +91,20 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
 
     @function_tool
     def search_agent_skills(query: str) -> str:
-        """Search shared skills by keyword and return matching filenames and previews."""
+        """Search shared skills by keyword and return matching skill IDs and previews."""
         results = search_shared_skills(query=query, limit=10)
         if not results:
             return "No shared skills found"
         lines = []
         for item in results:
-            lines.append(f"- {item['filename']}: {item['preview']}")
+            lines.append(f"- {item['skill_id']} | {item['title']}: {item['preview']}")
         return "\n".join(lines)
 
     @function_tool
-    def read_agent_skill(filename: str) -> str:
-        """Read one shared skill file by filename."""
+    def read_agent_skill(skill_name: str) -> str:
+        """Read one shared skill by skill directory name (or legacy .md filename)."""
         try:
-            return read_shared_skill(filename)
+            return read_shared_skill(skill_name)
         except FileNotFoundError as exc:
             return f"Skill not found: {exc}"
 
