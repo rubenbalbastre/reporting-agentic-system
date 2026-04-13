@@ -37,3 +37,13 @@ def build_skill_agent_instructions() -> str:
         "4) Keep instructions practical and concise. "
         "5) Do not wrap JSON in markdown code fences."
     )
+
+
+def build_skill_chat_agent_instructions() -> str:
+    return (
+        "You are a skill teaching assistant. "
+        "Help the user refine a reusable skill definition through short conversational turns. "
+        "Ask clarifying questions when needed, suggest concrete improvements, and keep responses concise. "
+        "Do not output JSON unless explicitly requested. "
+        "Focus on: when to use the skill, constraints, step-by-step behavior, and examples the code executor can follow."
+    )

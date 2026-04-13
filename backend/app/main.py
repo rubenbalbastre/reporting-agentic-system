@@ -1,6 +1,7 @@
 import os
 import mimetypes
 import json
+from datetime import datetime, timezone
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,10 +19,15 @@ from app.schemas import (
     TeachAgentRequest,
     TeachAgentResponse,
     SkillSummary,
+    Skill,
+    CreateSkillRequest,
+    SkillConversation,
+    SkillMessage,
+    PublishSkillRequest,
 )
 from app.agent import build_main_agent
-from app.skill_agent import build_skill_agent
-from app.skills import create_skill_from_request, create_skill_from_agent_output, list_existing_skills
+from app.skill_agent import build_skill_agent, build_skill_chat_agent
+from app.skills import create_skill_from_request, create_skill_from_agent_output, list_existing_skills, slugify
 from app.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -96,6 +102,36 @@ def _get_conversation(cur: Any, conversation_id: int) -> dict[str, Any]:
     row = cur.fetchone()
     if row is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
+    return row
+
+
+def _get_skill(cur: Any, skill_id: int) -> dict[str, Any]:
+    cur.execute(
+        """
+        SELECT id, name, description, slug, skill_md_path, created_at, updated_at
+        FROM skills
+        WHERE id = %s;
+        """,
+        (skill_id,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return row
+
+
+def _get_skill_conversation(cur: Any, skill_conversation_id: int) -> dict[str, Any]:
+    cur.execute(
+        """
+        SELECT id, skill_id, created_at
+        FROM skill_conversations
+        WHERE id = %s;
+        """,
+        (skill_conversation_id,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Skill conversation not found")
     return row
 
 
@@ -191,6 +227,58 @@ def _parse_skill_agent_output(raw_output: str) -> dict[str, str]:
         "description": str(payload.get("description", "")).strip(),
         "skill_markdown": str(payload.get("skill_markdown", "")).strip(),
     }
+
+
+def _build_skill_chat_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
+    recent = history_rows[-max_messages:]
+    lines = []
+    for row in recent:
+        lines.append(f"{row['role']}: {row['content']}")
+    lines.append(f"user: {user_content}")
+    return "Skill teaching conversation:\n" + "\n".join(lines)
+
+
+def _load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, list[dict[str, Any]]]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            convo = _get_skill_conversation(cur, skill_conversation_id)
+            cur.execute(
+                """
+                SELECT role, content
+                FROM skill_messages
+                WHERE skill_conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (skill_conversation_id,),
+            )
+            return convo["skill_id"], cur.fetchall()
+
+
+def _insert_skill_message(
+    cur: Any, skill_conversation_id: int, skill_id: int, role: str, content: str
+) -> dict[str, Any]:
+    cur.execute(
+        """
+        INSERT INTO skill_messages (skill_conversation_id, role, content)
+        VALUES (%s, %s, %s)
+        RETURNING id, %s AS skill_id, %s AS skill_conversation_id, role, content, created_at;
+        """,
+        (skill_conversation_id, role, content, skill_id, skill_conversation_id),
+    )
+    return cur.fetchone()
+
+
+def _persist_skill_message_pair(
+    skill_conversation_id: int, skill_id: int, user_content: str, assistant_content: str
+) -> tuple[SkillMessage, SkillMessage]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _get_skill(cur, skill_id)
+            _get_skill_conversation(cur, skill_conversation_id)
+            user_row = _insert_skill_message(cur, skill_conversation_id, skill_id, "user", user_content)
+            assistant_row = _insert_skill_message(cur, skill_conversation_id, skill_id, "assistant", assistant_content)
+        conn.commit()
+    return SkillMessage(**user_row), SkillMessage(**assistant_row)
 
 
 @app.get("/reports")
@@ -370,8 +458,231 @@ async def teach_agent(payload: TeachAgentRequest) -> TeachAgentResponse:
     )
 
 
+@app.get("/skills", response_model=list[Skill])
+def list_skills() -> list[Skill]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, description, slug, skill_md_path, created_at, updated_at
+                FROM skills
+                ORDER BY id DESC;
+                """
+            )
+            rows = cur.fetchall()
+    return [Skill(**row) for row in rows]
+
+
+@app.post("/skills", response_model=Skill, status_code=201)
+def create_skill(payload: CreateSkillRequest) -> Skill:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Skill name is required")
+    description = ""
+    base_slug = slugify(name)
+    slug = base_slug
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            row = None
+            for attempt in range(2):
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO skills (name, description, slug)
+                        VALUES (%s, %s, %s)
+                        RETURNING id, name, description, slug, skill_md_path, created_at, updated_at;
+                        """,
+                        (name, description, slug),
+                    )
+                    row = cur.fetchone()
+                    break
+                except psycopg2.Error:
+                    conn.rollback()
+                    if attempt == 1:
+                        raise
+                    suffix = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+                    slug = f"{base_slug}-{suffix}"
+            if row is None:
+                raise HTTPException(status_code=500, detail="Failed to create skill")
+            cur.execute(
+                """
+                INSERT INTO skill_conversations (skill_id)
+                VALUES (%s);
+                """,
+                (row["id"],),
+            )
+        conn.commit()
+    return Skill(**row)
+
+
+@app.get("/skills/{skill_id}/conversations", response_model=list[SkillConversation])
+def list_skill_conversations(skill_id: int) -> list[SkillConversation]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _get_skill(cur, skill_id)
+            cur.execute(
+                """
+                SELECT id, skill_id, created_at
+                FROM skill_conversations
+                WHERE skill_id = %s
+                ORDER BY id DESC;
+                """,
+                (skill_id,),
+            )
+            rows = cur.fetchall()
+    return [SkillConversation(**row) for row in rows]
+
+
+@app.post("/skills/{skill_id}/conversations", response_model=SkillConversation, status_code=201)
+def create_skill_conversation(skill_id: int) -> SkillConversation:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _get_skill(cur, skill_id)
+            cur.execute(
+                """
+                INSERT INTO skill_conversations (skill_id)
+                VALUES (%s)
+                RETURNING id, skill_id, created_at;
+                """,
+                (skill_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return SkillConversation(**row)
+
+
+@app.get("/skill-conversations/{skill_conversation_id}/messages", response_model=list[SkillMessage])
+def list_skill_conversation_messages(skill_conversation_id: int) -> list[SkillMessage]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            convo = _get_skill_conversation(cur, skill_conversation_id)
+            cur.execute(
+                """
+                SELECT id, %s AS skill_id, skill_conversation_id, role, content, created_at
+                FROM skill_messages
+                WHERE skill_conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (convo["skill_id"], skill_conversation_id),
+            )
+            rows = cur.fetchall()
+    return [SkillMessage(**row) for row in rows]
+
+
+@app.post("/skill-conversations/{skill_conversation_id}/messages", status_code=201)
+async def create_skill_conversation_message(skill_conversation_id: int, payload: CreateMessageRequest):
+    user_content = payload.content.strip()
+    if not user_content:
+        raise HTTPException(status_code=400, detail="Message content is required")
+
+    skill_id, history_rows = _load_skill_conversation_history(skill_conversation_id)
+    try:
+        skill_chat_agent = build_skill_chat_agent()
+        agent_input = _build_skill_chat_input(history_rows, user_content)
+        result = await Runner.run(skill_chat_agent, agent_input)
+        assistant_content = str(result.final_output)
+    except Exception:
+        assistant_content = "I could not process this right now. Please try again."
+
+    user_message, assistant_message = _persist_skill_message_pair(
+        skill_conversation_id=skill_conversation_id,
+        skill_id=skill_id,
+        user_content=user_content,
+        assistant_content=assistant_content,
+    )
+    return {"messages": [user_message, assistant_message]}
+
+
+@app.post("/skills/{skill_id}/publish", response_model=Skill, status_code=200)
+async def publish_skill(skill_id: int, payload: PublishSkillRequest) -> Skill:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = _get_skill(cur, skill_id)
+            skill_conversation_id = payload.skill_conversation_id
+            if skill_conversation_id is None:
+                cur.execute(
+                    """
+                    SELECT id, skill_id, created_at
+                    FROM skill_conversations
+                    WHERE skill_id = %s
+                    ORDER BY id DESC
+                    LIMIT 1;
+                    """,
+                    (skill_id,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(status_code=400, detail="No skill conversation found to publish")
+                skill_conversation_id = row["id"]
+            convo = _get_skill_conversation(cur, skill_conversation_id)
+            if convo["skill_id"] != skill_id:
+                raise HTTPException(status_code=400, detail="Conversation does not belong to skill")
+
+            cur.execute(
+                """
+                SELECT role, content
+                FROM skill_messages
+                WHERE skill_conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (skill_conversation_id,),
+            )
+            messages = cur.fetchall()
+
+    history = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
+    publish_prompt = (
+        f"Create/update a skill called '{skill['name']}'.\n"
+        f"Current description: {skill['description']}\n"
+        "Use this conversation to define the skill:\n"
+        f"{history}"
+    )
+
+    try:
+        skill_agent = build_skill_agent()
+        result = await Runner.run(skill_agent, publish_prompt)
+        parsed = _parse_skill_agent_output(str(result.final_output))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate skill markdown: {exc}") from exc
+
+    if not parsed["skill_name"] or not parsed["description"] or not parsed["skill_markdown"]:
+        raise HTTPException(status_code=500, detail="Skill generation returned incomplete output")
+
+    created = create_skill_from_agent_output(
+        skill_name=parsed["skill_name"],
+        description=parsed["description"],
+        skill_markdown=parsed["skill_markdown"],
+    )
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE skills
+                SET name = %s,
+                    description = %s,
+                    slug = %s,
+                    skill_md_path = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, name, description, slug, skill_md_path, created_at, updated_at;
+                """,
+                (
+                    parsed["skill_name"],
+                    parsed["description"],
+                    slugify(parsed["skill_name"]),
+                    created["skill_md_path"],
+                    skill_id,
+                ),
+            )
+            updated = cur.fetchone()
+        conn.commit()
+    return Skill(**updated)
+
+
 @app.get("/agent/skills", response_model=list[SkillSummary])
 def list_agent_skills() -> list[SkillSummary]:
+    # Backward-compatible endpoint for existing UI consumers.
     return [SkillSummary(**item) for item in list_existing_skills()]
 
 
@@ -389,10 +700,6 @@ if __name__ == "__main__":
     from fastapi.testclient import TestClient
 
     with TestClient(app) as client:
-
-        response = client.post("/reports/50/messages", json={
-            "report_id": 50,
-            "payload": {"content": "Can you answer questions about total sales by product category for january 2017?"},
-        })
+        response = client.get("/health")
         print(response.status_code)
         print(response.json())
