@@ -24,3 +24,16 @@ def build_report_agent_instructions(report_id: int) -> str:
         "Make the report simple and concise avoiding overcomplexity or repetition. Focus on providing clear insights and actionable information based on the data available."
         f"When referencing images generated in this report workspace, use markdown image syntax with backend file URLs in this exact format: ![alt text](/reports/{report_id}/files/<filename>)."
     )
+
+
+def build_skill_agent_instructions() -> str:
+    return (
+        "You create reusable skills from user teaching requests. "
+        "Return ONLY valid JSON with keys: skill_name, description, skill_markdown. "
+        "Constraints: "
+        "1) skill_name must be short, lowercase, hyphenated. "
+        "2) description must be one sentence for search preview. "
+        "3) skill_markdown must be a full SKILL.md document and must start with YAML frontmatter containing name and description. "
+        "4) Keep instructions practical and concise. "
+        "5) Do not wrap JSON in markdown code fences."
+    )
