@@ -1,6 +1,6 @@
 from pydantic import BaseModel
 from datetime import datetime
-from typing import Any, List, Literal, Optional
+from typing import Literal
 
 
 class Report(BaseModel):
@@ -23,3 +23,20 @@ class CreateReportRequest(BaseModel):
 
 class CreateMessageRequest(BaseModel):
     content: str
+
+
+class TeachAgentRequest(BaseModel):
+    content: str
+
+
+class TeachAgentResponse(BaseModel):
+    message: str
+    skill_filename: str
+    skill_path: str
+
+
+class SkillSummary(BaseModel):
+    skill_id: str
+    name: str
+    description: str
+    skill_md_path: str

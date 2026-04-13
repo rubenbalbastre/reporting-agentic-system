@@ -28,12 +28,15 @@ Frontend (React + Vite)
   -> Backend API (FastAPI, /reports/*)
       -> Main agent (OpenAI Agents SDK)
           -> report_agent tool (reads/updates report markdown)
+          -> skill_agent (/agent/teach flow to generate SKILL.md content)
           -> Worker API (/invoke)
               -> Planner agent + code executor agent
+              -> Shared skill lookup tools (search/read skills)
               -> Postgres inspection/query tools + Python execution
 
 Postgres stores app state (reports, conversations, messages)
 Shared volume stores per-report files under /data/shared/jobs/report_<id>/
+Shared volume also stores learned skills under /data/shared/skills/<skill_name>/SKILL.md
 ```
 
 ## Repository Layout 📁
@@ -135,6 +138,8 @@ Backend (`:8000`):
 - `POST /reports/{report_id}/messages`
 - `GET /reports/{report_id}/markdown`
 - `GET /reports/{report_id}/files/{file_path}`
+- `POST /agent/teach` (creates a learned skill from UI text)
+- `GET /agent/skills` (lists existing learned skills)
 
 Worker (`:5000`):
 
@@ -156,6 +161,32 @@ Images/files can be referenced from markdown through backend file routes, for ex
 ```md
 ![Chart](/reports/12/files/sales_by_category.png)
 ```
+
+## Skills 🧠
+
+Skills are user-taught behaviors stored in the shared Docker volume and consumed by worker agents.
+
+- Skill storage path:
+
+```text
+/data/shared/skills/<skill_name>/SKILL.md
+```
+
+- SKILL.md format:
+  - Uses YAML frontmatter with required `name` and `description`.
+  - Contains Markdown instructions for when/how to apply the skill.
+- UI flow:
+  - Click `Teach the Agent` in the top bar.
+  - The modal lets you submit new skill text.
+  - Existing skills are available from `Show learnt skills` (collapsed by default).
+- Runtime behavior:
+  - Main interface agent does not read skills directly.
+  - Worker code planner searches/reads relevant skills and adds notes to the plan.
+  - Worker code executor receives planner skill notes and can also search/read skills during execution.
+
+For more details, see [docs/skills.md](docs/skills.md).
+
+Current limitation: the Skills implementation is intentionally basic and currently writes only a `SKILL.md` file per skill. It does not yet scaffold richer skill packages (for example `scripts/`, `references/`, `assets/`, or advanced multi-file instructions). Also, current skill search is simplistic and limited; a RAG-based retrieval approach would likely be a better long-term solution. This can be expanded in a future pull request.
 
 ## Observability 👀
 

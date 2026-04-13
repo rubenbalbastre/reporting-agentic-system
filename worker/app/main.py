@@ -63,7 +63,15 @@ async def invoke(request: InvokeRequest, http_request: Request) -> dict:
         # execute plan
         elif plan_result.status == "ready_to_execute":
             steps_text = "\n".join(step.model_dump_json() for step in plan_result.steps)
-            execution_result = await Runner.run(code_executor_agent, steps_text, max_turns=30)
+            skills_text = ", ".join(plan_result.skills_to_apply) if plan_result.skills_to_apply else "(none)"
+            notes_text = plan_result.skill_notes or "No specific skill notes."
+            executor_input = (
+                f"User request:\n{request.query}\n\n"
+                f"Skills to apply:\n{skills_text}\n\n"
+                f"Skill notes:\n{notes_text}\n\n"
+                f"Plan steps:\n{steps_text}"
+            )
+            execution_result = await Runner.run(code_executor_agent, executor_input, max_turns=30)
             out = execution_result.final_output
             
         return {"result": out, "session_id": session_id}

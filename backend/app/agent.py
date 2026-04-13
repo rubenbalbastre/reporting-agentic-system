@@ -36,7 +36,7 @@ def build_main_agent(report_id: int) -> Agent:
                 tool_name="report_agent",
                 tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
             ),
-            call_artifact_worker
+            call_artifact_worker,
         ],
     )
     return agent
