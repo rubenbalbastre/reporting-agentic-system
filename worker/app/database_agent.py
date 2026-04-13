@@ -6,6 +6,7 @@ import os
 import psycopg2
 from psycopg2 import sql
 from collections import defaultdict
+from app.prompts import build_database_agent_instructions
 
 
 def get_db_connection():
@@ -153,7 +154,7 @@ def build_database_agent() -> Agent:
 
     database_agent = Agent(
         name="database_agent",
-        instructions="You must think if the user's question can be answered by querying the database. If it can, you should generate SQL queries based on the user's question. You should only respond with the SQL query and nothing else.",
+        instructions=build_database_agent_instructions(),
         model="gpt-5.4-nano",
         output_type=DataBaseInspection,
         tools=[
