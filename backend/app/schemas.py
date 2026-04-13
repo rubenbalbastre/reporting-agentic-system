@@ -33,3 +33,10 @@ class TeachAgentResponse(BaseModel):
     message: str
     skill_filename: str
     skill_path: str
+
+
+class SkillSummary(BaseModel):
+    skill_id: str
+    name: str
+    description: str
+    skill_md_path: str

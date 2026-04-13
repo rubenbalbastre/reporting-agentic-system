@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 def get_shared_skills_root() -> Path:
-    return Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills/main-agent")).resolve()
+    return Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills")).resolve()
 
 
 def _collect_skill_entries(root: Path) -> list[dict[str, Path]]:

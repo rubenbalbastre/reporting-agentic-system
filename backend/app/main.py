@@ -1,5 +1,6 @@
 import os
 import mimetypes
+import json
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,9 +16,11 @@ from app.schemas import (
     CreateMessageRequest,
     TeachAgentRequest,
     TeachAgentResponse,
+    SkillSummary,
 )
 from app.agent import build_main_agent
-from app.skills import create_skill_from_request
+from app.skill_agent import build_skill_agent
+from app.skills import create_skill_from_request, create_skill_from_agent_output, list_existing_skills
 from app.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -181,6 +184,20 @@ def _read_report_markdown(report_id: int) -> str:
     return report_path.read_text(encoding="utf-8")
 
 
+def _parse_skill_agent_output(raw_output: str) -> dict[str, str]:
+    text = (raw_output or "").strip()
+    if text.startswith("```"):
+        text = text.strip("`")
+        if text.startswith("json"):
+            text = text[4:].strip()
+    payload = json.loads(text)
+    return {
+        "skill_name": str(payload.get("skill_name", "")).strip(),
+        "description": str(payload.get("description", "")).strip(),
+        "skill_markdown": str(payload.get("skill_markdown", "")).strip(),
+    }
+
+
 @app.get("/reports")
 def list_reports()-> List[Report]:
     with get_db_connection() as conn:
@@ -296,20 +313,31 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
 
 
 @app.post("/agent/teach", response_model=TeachAgentResponse, status_code=201)
-def teach_agent(payload: TeachAgentRequest) -> TeachAgentResponse:
+async def teach_agent(payload: TeachAgentRequest) -> TeachAgentResponse:
     content = payload.content.strip()
     if not content:
         raise HTTPException(status_code=400, detail="Teaching message content is required")
 
     try:
-        created = create_skill_from_request(content)
+        skill_agent = build_skill_agent()
+        result = await Runner.run(skill_agent, content)
+        parsed = _parse_skill_agent_output(str(result.final_output))
+
+        if parsed["skill_name"] and parsed["description"] and parsed["skill_markdown"]:
+            created = create_skill_from_agent_output(
+                skill_name=parsed["skill_name"],
+                description=parsed["description"],
+                skill_markdown=parsed["skill_markdown"],
+            )
+        else:
+            created = create_skill_from_request(content)
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Failed to create shared skill: {exc}") from exc
 
     return TeachAgentResponse(
         message="Skill created and stored in shared volume",
         skill_filename=created["filename"],
-        skill_path=created["path"],
+        skill_path=created["skill_md_path"],
     )
 
 
