@@ -186,7 +186,7 @@ Skills are user-taught behaviors stored in the shared Docker volume and consumed
 
 For more details, see [docs/skills.md](docs/skills.md).
 
-Current limitation: the Skills implementation is intentionally basic and currently writes only a `SKILL.md` file per skill. It does not yet scaffold richer skill packages (for example `scripts/`, `references/`, `assets/`, or advanced multi-file instructions). This can be expanded in a future pull request.
+Current limitation: the Skills implementation is intentionally basic and currently writes only a `SKILL.md` file per skill. It does not yet scaffold richer skill packages (for example `scripts/`, `references/`, `assets/`, or advanced multi-file instructions). Also, current skill search is simplistic and limited; a RAG-based retrieval approach would likely be a better long-term solution. This can be expanded in a future pull request.
 
 ## Observability 👀
 

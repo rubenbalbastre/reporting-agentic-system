@@ -74,4 +74,4 @@ Prompt templates are centralized in:
 
 ## Current limitation
 
-The current implementation is intentionally basic: skill creation persists only a single `SKILL.md` file in each skill directory. It does not yet generate richer skill packages such as `scripts/`, `references/`, `assets/`, or advanced multi-file examples/instructions. This is a good candidate for a future pull request.
+The current implementation is intentionally basic: skill creation persists only a single `SKILL.md` file in each skill directory. It does not yet generate richer skill packages such as `scripts/`, `references/`, `assets/`, or advanced multi-file examples/instructions. Skill search is also currently simplistic and can miss relevant matches; a RAG-based retrieval layer would likely improve relevance and scalability. This is a good candidate for a future pull request.
