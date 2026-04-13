@@ -161,6 +161,21 @@ button:hover {
   border-bottom: 1px solid var(--line);
 }
 
+.conversation-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversation-controls select {
+  min-width: 180px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+}
+
 h2 {
   margin: 0;
   font-size: 17px;

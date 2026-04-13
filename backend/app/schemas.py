@@ -17,6 +17,12 @@ class Message(BaseModel):
     created_at: datetime
 
 
+class Conversation(BaseModel):
+    id: int
+    report_id: int
+    created_at: datetime
+
+
 class CreateReportRequest(BaseModel):
     title: str = "New Report"
 

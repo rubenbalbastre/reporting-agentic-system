@@ -11,6 +11,7 @@ from agents import Runner
 from pathlib import Path
 from app.schemas import (
     Report,
+    Conversation,
     Message,
     CreateReportRequest,
     CreateMessageRequest,
@@ -83,43 +84,35 @@ def _ensure_report_exists(cur: Any, report_id: int) -> None:
         raise HTTPException(status_code=404, detail="Report not found")
 
 
-def _load_report_history(report_id: int) -> list[dict[str, Any]]:
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            _ensure_report_exists(cur, report_id)
-            cur.execute(
-                """
-                SELECT m.role, m.content
-                FROM messages m
-                JOIN conversations c ON c.id = m.conversation_id
-                WHERE c.report_id = %s
-                ORDER BY m.id ASC;
-                """,
-                (report_id,),
-            )
-            return cur.fetchall()
-
-
-def _get_or_create_conversation_id(cur: Any, report_id: int) -> int:
+def _get_conversation(cur: Any, conversation_id: int) -> dict[str, Any]:
     cur.execute(
         """
-        SELECT id
+        SELECT id, report_id, created_at
         FROM conversations
-        WHERE report_id = %s
-        ORDER BY id ASC
-        LIMIT 1;
+        WHERE id = %s;
         """,
-        (report_id,),
+        (conversation_id,),
     )
-    conversation = cur.fetchone()
-    if conversation is not None:
-        return conversation["id"]
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return row
 
-    cur.execute(
-        "INSERT INTO conversations (report_id) VALUES (%s) RETURNING id;",
-        (report_id,),
-    )
-    return cur.fetchone()["id"]
+
+def _load_conversation_history(conversation_id: int) -> tuple[int, list[dict[str, Any]]]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            conversation = _get_conversation(cur, conversation_id)
+            cur.execute(
+                """
+                SELECT role, content
+                FROM messages
+                WHERE conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (conversation_id,),
+            )
+            return conversation["report_id"], cur.fetchall()
 
 
 def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, content: str) -> dict[str, Any]:
@@ -134,11 +127,13 @@ def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, c
     return cur.fetchone()
 
 
-def _persist_message_pair(report_id: int, user_content: str, assistant_content: str) -> tuple[Message, Message]:
+def _persist_message_pair_for_conversation(
+    conversation_id: int, report_id: int, user_content: str, assistant_content: str
+) -> tuple[Message, Message]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             _ensure_report_exists(cur, report_id)
-            conversation_id = _get_or_create_conversation_id(cur, report_id)
+            _get_conversation(cur, conversation_id)
             user_row = _insert_message(cur, conversation_id, report_id, "user", user_content)
             assistant_row = _insert_message(cur, conversation_id, report_id, "assistant", assistant_content)
         conn.commit()
@@ -241,24 +236,59 @@ def create_report(payload: CreateReportRequest) -> Report:
     return report
 
 
-@app.get("/reports/{report_id}/messages")
-def list_messages(report_id: int) -> List[Message]:
+@app.get("/reports/{report_id}/conversations")
+def list_conversations(report_id: int) -> List[Conversation]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM reports WHERE id = %s;", (report_id,))
-            if cur.fetchone() is None:
-                raise HTTPException(status_code=404, detail="Report not found")
+            _ensure_report_exists(cur, report_id)
+            cur.execute(
+                """
+                SELECT id, report_id, created_at
+                FROM conversations
+                WHERE report_id = %s
+                ORDER BY id DESC;
+                """,
+                (report_id,),
+            )
+            rows = cur.fetchall()
+    return [Conversation(**row) for row in rows]
+
+
+@app.post("/reports/{report_id}/conversations", status_code=201)
+def create_conversation(report_id: int) -> Conversation:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+            cur.execute(
+                """
+                INSERT INTO conversations (report_id)
+                VALUES (%s)
+                RETURNING id, report_id, created_at;
+                """,
+                (report_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return Conversation(**row)
+
+
+@app.get("/conversations/{conversation_id}/messages")
+def list_conversation_messages(conversation_id: int) -> List[Message]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            conversation = _get_conversation(cur, conversation_id)
             cur.execute(
                 """
                 SELECT m.id, c.report_id, m.role, m.content, m.created_at
                 FROM messages m
                 JOIN conversations c ON c.id = m.conversation_id
-                WHERE c.report_id = %s
+                WHERE m.conversation_id = %s
                 ORDER BY m.id ASC;
                 """,
-                (report_id,),
+                (conversation_id,),
             )
             rows = cur.fetchall()
+    _ = conversation
     return [Message(**row) for row in rows]
 
 
@@ -285,14 +315,13 @@ def get_report_file(report_id: int, file_path: str):
     return FileResponse(path=safe_file_path, media_type=media_type)
 
 
-@app.post("/reports/{report_id}/messages", status_code=201)
-async def create_message(report_id: int, payload: CreateMessageRequest):
-
+@app.post("/conversations/{conversation_id}/messages", status_code=201)
+async def create_conversation_message(conversation_id: int, payload: CreateMessageRequest):
     user_content = payload.content.strip()
     if not user_content:
         raise HTTPException(status_code=400, detail="Message content is required")
 
-    history_rows = _load_report_history(report_id)
+    report_id, history_rows = _load_conversation_history(conversation_id)
     _ensure_report_markdown_exists(report_id)
 
     try:
@@ -303,12 +332,12 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
     except Exception:
         assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
 
-    user_message, assistant_message = _persist_message_pair(
+    user_message, assistant_message = _persist_message_pair_for_conversation(
+        conversation_id=conversation_id,
         report_id=report_id,
         user_content=user_content,
         assistant_content=assistant_content,
     )
-
     return {"messages": [user_message, assistant_message]}
 
 

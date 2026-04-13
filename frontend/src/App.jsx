@@ -12,6 +12,8 @@ const API_BASE = import.meta.env.VITE_API_BASE_URL || "http://localhost:8000";
 export default function App() {
   const [reports, setReports] = useState([]);
   const [activeReportId, setActiveReportId] = useState(null);
+  const [conversations, setConversations] = useState([]);
+  const [activeConversationId, setActiveConversationId] = useState(null);
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [markdown, setMarkdown] = useState("# Select or create a report");
@@ -32,12 +34,23 @@ export default function App() {
 
   useEffect(() => {
     if (activeReportId) {
-      loadMessages(activeReportId);
+      loadConversations(activeReportId);
       loadReportMarkdown(activeReportId);
     } else {
       setMarkdown("# Select or create a report");
+      setConversations([]);
+      setActiveConversationId(null);
+      setMessages([]);
     }
   }, [activeReportId]);
+
+  useEffect(() => {
+    if (activeConversationId) {
+      loadMessages(activeConversationId);
+    } else {
+      setMessages([]);
+    }
+  }, [activeConversationId]);
 
   useEffect(() => {
     if (!teachModalOpen) {
@@ -54,11 +67,25 @@ export default function App() {
     if (!activeReportId && data.length) setActiveReportId(data[0].id);
   }
 
-  async function loadMessages(reportId) {
-    const res = await fetch(`${API_BASE}/reports/${reportId}/messages`);
+  async function loadMessages(conversationId) {
+    const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`);
     const data = await res.json();
     setMessages(data);
     return data;
+  }
+
+  async function loadConversations(reportId) {
+    const res = await fetch(`${API_BASE}/reports/${reportId}/conversations`);
+    const data = await res.json();
+    const list = Array.isArray(data) ? data : [];
+    setConversations(list);
+    if (list.length === 0) {
+      setActiveConversationId(null);
+      return list;
+    }
+    const hasActive = list.some((c) => c.id === activeConversationId);
+    if (!hasActive) setActiveConversationId(list[0].id);
+    return list;
   }
 
   async function loadReportMarkdown(reportId) {
@@ -81,14 +108,29 @@ export default function App() {
     const created = await res.json();
     await loadReports();
     setActiveReportId(created.id);
-    setMessages([]);
+    const convs = await loadConversations(created.id);
+    if (convs.length > 0) setActiveConversationId(convs[0].id);
     await loadReportMarkdown(created.id);
   }
 
-  async function sendMessage() {
-    if (!activeReportId || !input.trim()) return;
+  async function createConversation() {
+    if (!activeReportId) return;
+    const res = await fetch(`${API_BASE}/reports/${activeReportId}/conversations`, {
+      method: "POST",
+    });
+    const created = await res.json();
+    if (!res.ok) {
+      alert(created.detail || "Failed to create conversation");
+      return;
+    }
+    await loadConversations(activeReportId);
+    setActiveConversationId(created.id);
+  }
 
-    const reportId = activeReportId;
+  async function sendMessage() {
+    if (!activeConversationId || !input.trim()) return;
+
+    const conversationId = activeConversationId;
     const content = input.trim();
     setInput("");
 
@@ -99,15 +141,15 @@ export default function App() {
     };
     setMessages((prev) => [...prev, optimisticUser]);
 
-    const res = await fetch(`${API_BASE}/reports/${reportId}/messages`, {
+    const res = await fetch(`${API_BASE}/conversations/${conversationId}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content }),
     });
 
     const data = await res.json();
-    await loadMessages(reportId);
-    await loadReportMarkdown(reportId);
+    await loadMessages(conversationId);
+    await loadReportMarkdown(activeReportId);
 
     if (!res.ok) {
       alert(data.detail || "Failed to send message");
@@ -287,6 +329,26 @@ export default function App() {
           <section className="panel chat-panel">
             <div className="panel-head">
               <h2>Chat</h2>
+              <div className="conversation-controls">
+                <select
+                  value={activeConversationId || ""}
+                  onChange={(e) => setActiveConversationId(Number(e.target.value))}
+                  disabled={!activeReportId || conversations.length === 0}
+                >
+                  {conversations.length === 0 ? (
+                    <option value="">No conversations</option>
+                  ) : (
+                    conversations.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        Conversation #{c.id}
+                      </option>
+                    ))
+                  )}
+                </select>
+                <button onClick={createConversation} disabled={!activeReportId}>
+                  New Conversation
+                </button>
+              </div>
             </div>
             <div className="chat-input">
               <input

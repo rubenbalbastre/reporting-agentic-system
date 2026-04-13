@@ -134,8 +134,10 @@ Backend (`:8000`):
 - `GET /health`
 - `GET /reports`
 - `POST /reports`
-- `GET /reports/{report_id}/messages`
-- `POST /reports/{report_id}/messages`
+- `GET /reports/{report_id}/conversations`
+- `POST /reports/{report_id}/conversations`
+- `GET /conversations/{conversation_id}/messages`
+- `POST /conversations/{conversation_id}/messages`
 - `GET /reports/{report_id}/markdown`
 - `GET /reports/{report_id}/files/{file_path}`
 - `POST /agent/teach` (creates a learned skill from UI text)
