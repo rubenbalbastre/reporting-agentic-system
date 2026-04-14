@@ -32,8 +32,13 @@ export default function ReportChatPanel({
               ))
             )}
           </select>
-          <button onClick={onCreateConversation} disabled={!activeReportId}>
-            New Conversation
+          <button
+            onClick={onCreateConversation}
+            disabled={!activeReportId}
+            title="New conversation"
+            aria-label="New conversation"
+          >
+            <span role="img" aria-hidden="true">✏️</span>
           </button>
         </div>
       </div>
