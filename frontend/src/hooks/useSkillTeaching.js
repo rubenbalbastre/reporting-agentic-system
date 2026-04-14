@@ -14,7 +14,6 @@ export function useSkillTeaching() {
   const [publishLoading, setPublishLoading] = useState(false);
 
   const [activeSkillId, setActiveSkillId] = useState(null);
-  const [newSkillName, setNewSkillName] = useState("");
   const [skillConversations, setSkillConversations] = useState([]);
   const [activeSkillConversationId, setActiveSkillConversationId] = useState(null);
   const [skillMessages, setSkillMessages] = useState([]);
@@ -62,7 +61,7 @@ export function useSkillTeaching() {
 
   async function createSkill() {
     if (createSkillLoading) return;
-    const name = newSkillName.trim() || `New Skill ${skills.length + 1}`;
+    const name = `New Skill ${skills.length + 1}`;
     setCreateSkillLoading(true);
     setTeachStatus(null);
     try {
@@ -72,7 +71,6 @@ export function useSkillTeaching() {
         return;
       }
       setTeachStatus({ type: "success", text: `Created skill ${data.name}` });
-      setNewSkillName("");
       setTeachMode("explore");
       await loadSkills();
       setActiveSkillId(data.id);
@@ -201,8 +199,6 @@ export function useSkillTeaching() {
     publishLoading,
     activeSkillId,
     setActiveSkillId,
-    newSkillName,
-    setNewSkillName,
     skillConversations,
     activeSkillConversationId,
     setActiveSkillConversationId,

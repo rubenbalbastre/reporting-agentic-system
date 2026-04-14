@@ -8,7 +8,6 @@ export default function TeachAgentModal({
   skills,
   skillsLoading,
   activeSkillId,
-  newSkillName,
   createSkillLoading,
   skillConversations,
   activeSkillConversationId,
@@ -21,7 +20,6 @@ export default function TeachAgentModal({
   onClose,
   onSetTeachMode,
   onSelectSkill,
-  onNewSkillName,
   onCreateSkill,
   onConversationChange,
   onCreateSkillConversation,
@@ -54,6 +52,9 @@ export default function TeachAgentModal({
       </div>
 
       <div className="skill-chat-section">
+        <div className="teach-editor-info" title="Name and description are generated when publishing the skill.">
+          Name and description are generated when publishing.
+        </div>
         <div className="teach-actions teach-actions-left">
           <select
             value={activeSkillConversationId || ""}
@@ -139,9 +140,10 @@ export default function TeachAgentModal({
               </button>
               <button
                 className={`teach-mode-btn teach-mode-create ${teachMode === "create" ? "active" : ""}`}
-                onClick={() => onSetTeachMode("create")}
+                onClick={onCreateSkill}
+                disabled={createSkillLoading}
               >
-                Create New Skill
+                {createSkillLoading ? "Creating..." : "Create New Skill"}
               </button>
             </div>
           )}
@@ -169,19 +171,6 @@ export default function TeachAgentModal({
                   ))}
                 </ul>
               )}
-            </div>
-          )}
-
-          {teachMode === "create" && (
-            <div className="teach-create-row">
-              <input
-                value={newSkillName}
-                onChange={(e) => onNewSkillName(e.target.value)}
-                placeholder="New skill name..."
-              />
-              <button className="btn-create-skill" onClick={onCreateSkill} disabled={createSkillLoading}>
-                {createSkillLoading ? "Creating..." : "Create Skill"}
-              </button>
             </div>
           )}
 

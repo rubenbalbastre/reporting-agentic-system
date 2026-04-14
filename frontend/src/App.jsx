@@ -99,7 +99,6 @@ export default function App() {
         skills={skill.skills}
         skillsLoading={skill.skillsLoading}
         activeSkillId={skill.activeSkillId}
-        newSkillName={skill.newSkillName}
         createSkillLoading={skill.createSkillLoading}
         skillConversations={skill.skillConversations}
         activeSkillConversationId={skill.activeSkillConversationId}
@@ -112,7 +111,6 @@ export default function App() {
         onClose={() => skill.setTeachModalOpen(false)}
         onSetTeachMode={skill.setTeachMode}
         onSelectSkill={skill.setActiveSkillId}
-        onNewSkillName={skill.setNewSkillName}
         onCreateSkill={skill.createSkill}
         onConversationChange={skill.setActiveSkillConversationId}
         onCreateSkillConversation={skill.createSkillConversation}
