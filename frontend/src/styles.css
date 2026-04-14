@@ -335,6 +335,13 @@ h2 {
   gap: 8px;
 }
 
+.teach-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
 .teach-title-skill {
   color: #0071e3;
 }
@@ -391,7 +398,7 @@ h2 {
 
 .skills-box h3 {
   margin: 0 0 8px;
-  font-size: 14px;
+  font-size: 18px;
 }
 
 .skills-list {
@@ -517,6 +524,12 @@ h2 {
   border-color: transparent;
 }
 
+.btn-send-report {
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
 .btn-publish-skill {
   background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
   color: #ffffff;
@@ -554,6 +567,12 @@ h2 {
   border-color: transparent;
 }
 
+.skill-toggle-btn {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  border-color: var(--line);
+}
+
 .btn-legacy {
   background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
   color: #ffffff;
@@ -579,6 +598,11 @@ h2 {
   height: 100%;
   min-height: 0;
   overflow: hidden;
+}
+
+.skill-chat-section .panel-head h3 {
+  margin: 0;
+  font-size: 16px;
 }
 
 .teach-editor-info {

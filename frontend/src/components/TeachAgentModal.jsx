@@ -54,30 +54,32 @@ export default function TeachAgentModal({
         <div className="teach-editor-info" title="Name and description are generated when publishing the skill.">
           Name and description are generated when publishing.
         </div>
-        <div className="teach-actions teach-actions-left">
-          <select
-            value={activeSkillConversationId || ""}
-            onChange={(e) => onConversationChange(Number(e.target.value))}
-            disabled={skillConversations.length === 0}
-          >
-            {skillConversations.length === 0 ? (
-              <option value="">No conversations</option>
-            ) : (
-              skillConversations.map((c) => (
-                <option key={c.id} value={c.id}>
-                  Skill Conversation #{c.id}
-                </option>
-              ))
-            )}
-          </select>
-          <button
-            className="icon-action-btn"
-            onClick={onCreateSkillConversation}
-            title="New skill conversation"
-            aria-label="New skill conversation"
-          >
-            <span role="img" aria-hidden="true">✏️</span>
-          </button>
+        <div className="panel-head">
+          <h3>Working Chat</h3>
+          <div className="teach-actions teach-actions-left">
+            <select
+              value={activeSkillConversationId || ""}
+              onChange={(e) => onConversationChange(Number(e.target.value))}
+              disabled={skillConversations.length === 0}
+            >
+              {skillConversations.length === 0 ? (
+                <option value="">No conversations</option>
+              ) : (
+                skillConversations.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Skill Conversation #{c.id}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              onClick={onCreateSkillConversation}
+              title="New skill conversation"
+              aria-label="New skill conversation"
+            >
+              <span role="img" aria-hidden="true">✏️</span>
+            </button>
+          </div>
         </div>
         <div className="teach-chat-box">
           {skillMessages.map((msg) => (
@@ -122,18 +124,25 @@ export default function TeachAgentModal({
         aria-label="Teach the Agent"
       >
         <div className="panel-head">
-          <h2>
-            Teach the Agent
-            {isSkillEditingView && activeSkill ? (
-              <>
-                : <span className="teach-title-skill">Skill {activeSkill.name}</span>
-              </>
-            ) : null}
-          </h2>
-          <div className="teach-header-actions">
-            <button onClick={() => setSkillsSidebarHidden((v) => !v)}>
-              {skillsSidebarHidden ? "Show Skills" : "Hide Skills"}
+          <div className="teach-head-left">
+            <button
+              className="icon-action-btn skill-toggle-btn"
+              onClick={() => setSkillsSidebarHidden((v) => !v)}
+              title={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
+              aria-label={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
+            >
+              <span role="img" aria-hidden="true">🛠️</span>
             </button>
+            <h2>
+              Teach the Agent
+              {isSkillEditingView && activeSkill ? (
+                <>
+                  : <span className="teach-title-skill">Skill {activeSkill.name}</span>
+                </>
+              ) : null}
+            </h2>
+          </div>
+          <div className="teach-header-actions">
             <button onClick={onClose}>Close</button>
           </div>
         </div>
@@ -143,7 +152,7 @@ export default function TeachAgentModal({
             {showExploreSidebar && (
               <div className="skills-box skills-sidebar">
                 <div className="sidebar-head">
-                  <h3>Existing Skills</h3>
+                  <h3>Skills</h3>
                   <div className="sidebar-actions">
                     <button
                       className="icon-action-btn"
