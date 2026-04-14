@@ -37,17 +37,6 @@ export default function ReportChatPanel({
           </button>
         </div>
       </div>
-      <div className="chat-input">
-        <input
-          value={input}
-          onChange={(e) => onInputChange(e.target.value)}
-          placeholder="Ask to refine the report..."
-          onKeyDown={(e) => {
-            if (e.key === "Enter") onSendMessage();
-          }}
-        />
-        <button onClick={onSendMessage}>Send</button>
-      </div>
       <div className="panel-content chat-messages">
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}`}>
@@ -60,6 +49,17 @@ export default function ReportChatPanel({
             )}
           </div>
         ))}
+      </div>
+      <div className="chat-input">
+        <input
+          value={input}
+          onChange={(e) => onInputChange(e.target.value)}
+          placeholder="Ask to refine the report..."
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onSendMessage();
+          }}
+        />
+        <button onClick={onSendMessage}>Send</button>
       </div>
     </section>
   );
