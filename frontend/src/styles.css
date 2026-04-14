@@ -549,6 +549,9 @@ h2 {
   text-align: center;
   font-size: 18px;
   line-height: 1;
+  background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
+  color: #ffffff;
+  border-color: transparent;
 }
 
 .btn-legacy {
