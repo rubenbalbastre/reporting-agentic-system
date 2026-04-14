@@ -526,6 +526,15 @@ h2 {
   text-align: center;
 }
 
+.icon-action-btn {
+  min-width: 38px;
+  width: 38px;
+  padding: 9px 0;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+}
+
 .btn-legacy {
   background: linear-gradient(180deg, #6b7280 0%, #4b5563 100%);
   color: #ffffff;

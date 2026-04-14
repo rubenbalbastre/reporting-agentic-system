@@ -44,7 +44,14 @@ export default function App() {
             <div className="sidebar-head">
               <h2>Reports</h2>
               <div className="sidebar-actions">
-                <button onClick={report.createReport}>New Report</button>
+                <button
+                  className="icon-action-btn"
+                  onClick={report.createReport}
+                  title="New report"
+                  aria-label="New report"
+                >
+                  +
+                </button>
                 <button
                   className="btn-delete-report icon-danger-btn"
                   onClick={() => {
