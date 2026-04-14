@@ -86,16 +86,20 @@ export default function TeachAgentModal({
             </div>
           ))}
         </div>
-        <textarea
-          value={teachInput}
-          onChange={(e) => onTeachInput(e.target.value)}
-          placeholder="Describe or refine this skill..."
-          rows={4}
-        />
-        <div className="teach-actions">
+        <div className="chat-input">
+          <input
+            value={teachInput}
+            onChange={(e) => onTeachInput(e.target.value)}
+            placeholder="Describe or refine this skill..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSendSkillMessage();
+            }}
+          />
           <button className="btn-send-skill" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
             {teachLoading ? "Sending..." : "Send"}
           </button>
+        </div>
+        <div className="teach-actions">
           <button
             className="btn-publish-skill"
             onClick={onPublishSkill}
@@ -127,32 +131,9 @@ export default function TeachAgentModal({
             ) : null}
           </h2>
           <div className="teach-header-actions">
-            <button
-              className="icon-action-btn"
-              onClick={handleCreateSkillClick}
-              disabled={createSkillLoading}
-              title={createSkillLoading ? "Creating skill..." : "Create new skill"}
-              aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
-            >
-              {createSkillLoading ? "…" : "+"}
-            </button>
             <button onClick={() => setSkillsSidebarHidden((v) => !v)}>
               {skillsSidebarHidden ? "Show Skills" : "Hide Skills"}
             </button>
-            {isSkillEditingView && (
-              <button
-                className="btn-delete-skill icon-danger-btn"
-                onClick={() => {
-                  const confirmed = window.confirm("Delete this skill and all its skill conversations?");
-                  if (confirmed) onDeleteSkill();
-                }}
-                disabled={deleteSkillLoading}
-                title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
-                aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
-              >
-                {deleteSkillLoading ? "…" : "🗑"}
-              </button>
-            )}
             <button onClick={onClose}>Close</button>
           </div>
         </div>
@@ -161,7 +142,33 @@ export default function TeachAgentModal({
           <div className={`teach-explore-layout ${showExploreSidebar ? "" : "sidebar-hidden"}`}>
             {showExploreSidebar && (
               <div className="skills-box skills-sidebar">
-                <h3>Existing Skills</h3>
+                <div className="sidebar-head">
+                  <h3>Existing Skills</h3>
+                  <div className="sidebar-actions">
+                    <button
+                      className="icon-action-btn"
+                      onClick={handleCreateSkillClick}
+                      disabled={createSkillLoading}
+                      title={createSkillLoading ? "Creating skill..." : "Create new skill"}
+                      aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
+                    >
+                      {createSkillLoading ? "…" : "+"}
+                    </button>
+                    <button
+                      className="btn-delete-skill icon-danger-btn"
+                      onClick={() => {
+                        if (!isSkillEditingView) return;
+                        const confirmed = window.confirm("Delete this skill and all its skill conversations?");
+                        if (confirmed) onDeleteSkill();
+                      }}
+                      disabled={!isSkillEditingView || deleteSkillLoading}
+                      title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
+                      aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
+                    >
+                      {deleteSkillLoading ? "…" : "🗑"}
+                    </button>
+                  </div>
+                </div>
                 {skillsLoading ? (
                   <div className="skills-empty">Loading skills...</div>
                 ) : skills.length === 0 ? (
