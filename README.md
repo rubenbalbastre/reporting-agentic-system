@@ -1,65 +1,64 @@
 # ReportingAgent
 
-Agentic analytics reporting system that turns chat requests into iteratively updated markdown reports.
+ReportingAgent is an agentic reporting app that turns chat requests into iterative markdown reports and supports reusable shared Skills.
 
 ## UI Preview 🖼️
 
-<img src="docs/ui_screenshot.png" alt="ReportingAgent UI" width="900" />
+<img src="docs/ux_reports.png" alt="ReportingAgent Reports UI" width="900" />
+<img src="docs/ux_skills.png" alt="ReportingAgent Skills UI" width="900" />
 
-The tool works as an iterative reporting workflow:
-- You create or select a report from the left sidebar.
-- You ask questions or refinement requests in chat (right panel).
-- The backend agent decides how to answer, calls the worker when analysis/code execution is needed, and updates the report content.
-- The report preview (center panel) reloads from `report.md`, including generated charts/tables saved in the report workspace.
-- Every exchange is stored in Postgres so the report can be refined across multiple turns.
+## Feature Purpose 🎯
 
-## What It Does ✨
+- Reports: core delivery feature. A report is a persistent workspace (`report_<id>`) where chat iterations update `report.md` and generated artifacts over time.
+- Skills: reusable behavior feature. Skills capture user-taught guidance once and persist it as shared `SKILL.md` instructions for worker reuse.
 
-- Lets you create reports and refine them through chat.
-- Persists report conversations in Postgres.
-- Uses a backend orchestration agent plus a worker agent that can inspect DB schema, write/run Python, and generate report artifacts.
-- Stores each report in its own workspace directory (`report.md` + generated files).
-- Optionally sends traces to a self-hosted Langfuse stack.
+## Key Capabilities ✨
+
+- Create, iterate, and delete reports from the UI.
+- Persist report conversations in Postgres (`reports -> conversations -> messages`).
+- Maintain shared skills with teaching chat and publish flow.
+- Persist skill conversations in Postgres (`skills -> skill_conversations -> skill_messages`).
+- Use backend + worker agent orchestration for report generation/refinement.
+- Work with any dataset, as long as it is accessible in a PostgreSQL database.
 
 ## Architecture 🏗️
 
 ```text
 Frontend (React + Vite)
-  -> Backend API (FastAPI, /reports/*)
-      -> Main agent (OpenAI Agents SDK)
-          -> report_agent tool (reads/updates report markdown)
-          -> skill_agent (/agent/teach flow to generate SKILL.md content)
-          -> Worker API (/invoke)
-              -> Planner agent + code executor agent
-              -> Shared skill lookup tools (search/read skills)
-              -> Postgres inspection/query tools + Python execution
+  -> Backend API (FastAPI)
+      -> Main backend agent
+      -> Skill chat + skill publish agents
+      -> Worker API (/invoke)
+          -> Code planner + code executor
+          -> Shared skill search/read tools
 
-Postgres stores app state (reports, conversations, messages)
-Shared volume stores per-report files under /data/shared/jobs/report_<id>/
-Shared volume also stores learned skills under /data/shared/skills/<skill_name>/SKILL.md
+Postgres stores app state (reports, conversations, messages, skills, skill_conversations, skill_messages)
+Shared volume stores report files under /data/shared/jobs/report_<id>/
+Shared volume stores skills under /data/shared/skills/<skill_slug>/SKILL.md
 ```
 
 ## Repository Layout 📁
 
 ```text
-backend/                 FastAPI API + main orchestration agent
+backend/                 FastAPI API + backend agents
 frontend/                React/Vite UI
-worker/                  FastAPI worker + planning/execution agents
+worker/                  FastAPI worker + planner/executor agents
 infra/postgres/          SQL schemas (app + Olist)
+docs/                    Feature docs (skills, reports)
 scripts/                 Kaggle download/load helpers
-Makefile                 Main entrypoints for local Docker workflows
+Makefile                 Main Docker/local workflow commands
 ```
 
 ## Requirements ✅
 
 - Docker + Docker Compose
 - OpenAI API key
-- (Optional) Kaggle credentials to load the Olist dataset
-- `.env.local` for local (non-Docker) backend/worker testing
+- Optional: Kaggle credentials for Olist dataset loading
+- `.env.local` for local (non-Docker) backend/worker runs
 
 ## Quick Start 🚀
 
-1. Copy environment file and fill the required values:
+1. Copy env file and set values:
 
 ```bash
 cp .env.example .env
@@ -71,13 +70,13 @@ Minimum required variable:
 OPENAI_API_KEY=sk-...
 ```
 
-2. Start full stack (app + Langfuse):
+2. Start stack:
 
 ```bash
 make up
 ```
 
-3. Initialize app schema (reports/conversations/messages):
+3. Initialize app schema:
 
 ```bash
 make db-init
@@ -90,29 +89,78 @@ make db-init
 - Worker API: `http://localhost:5000`
 - Langfuse UI: `http://localhost:3002`
 
-## Make Targets 🛠️
+## Common Make Targets 🛠️
 
-Use `make help` to print all targets.
-
-Common targets:
-
-- `make up` / `make down` / `make ps` / `make logs` (app + Langfuse)
-- `make stack-up` / `make stack-down` (app stack only)
-- `make langfuse-up` / `make langfuse-down` (Langfuse only)
+- `make up` / `make down` / `make ps` / `make logs`
+- `make stack-up` / `make stack-down` / `make stack-ps` / `make stack-logs`
+- `make langfuse-up` / `make langfuse-down` / `make langfuse-ps` / `make langfuse-logs`
 - `make db-init` (apply `infra/postgres/app_schema.sql`)
+- `make kaggle-setup` (optional Olist setup)
 
-## Load Olist Dataset (Optional) 📊
+Run `make help` for full list.
 
-The worker can inspect/query whatever is in Postgres. To load the Olist ecommerce dataset:
+## API Summary 🔌
 
-1. Configure Kaggle auth (`KAGGLE_USERNAME` + `KAGGLE_KEY`, or `~/.kaggle/kaggle.json`).
-2. Run:
+### Reports
 
-```bash
-make kaggle-setup
+- `GET /reports`
+- `POST /reports`
+- `DELETE /reports/{report_id}`
+- `GET /reports/{report_id}/conversations`
+- `POST /reports/{report_id}/conversations`
+- `GET /conversations/{conversation_id}/messages`
+- `POST /conversations/{conversation_id}/messages`
+- `GET /reports/{report_id}/markdown`
+- `GET /reports/{report_id}/files/{file_path}`
+
+### Skills
+
+- `GET /skills`
+- `POST /skills`
+- `DELETE /skills/{skill_id}`
+- `GET /skills/{skill_id}/markdown`
+- `GET /skills/{skill_id}/conversations`
+- `POST /skills/{skill_id}/conversations`
+- `GET /skill-conversations/{skill_conversation_id}/messages`
+- `POST /skill-conversations/{skill_conversation_id}/messages`
+- `POST /skills/{skill_id}/publish`
+
+### Compatibility
+
+- `POST /agent/teach` (legacy quick-save)
+- `GET /agent/skills` (legacy compatibility)
+
+### Health
+
+- `GET /health` (backend)
+- `GET /health` (worker)
+
+## Storage & Lifecycle 🗂️
+
+### Reports
+
+```text
+/data/shared/jobs/report_<report_id>/
+  report.md
+  ...generated files
 ```
 
-Equivalent step-by-step:
+- One report can have multiple conversations.
+- Deleting a report cascades to conversations/messages.
+- Workspace folder cleanup is best-effort.
+
+### Skills (Shared)
+
+```text
+/data/shared/skills/<skill_slug>/SKILL.md
+```
+
+- `/data/shared` is backed by Docker volume `shared_data`.
+- `SKILL.md` requires YAML frontmatter (`name`, `description`) and markdown instructions.
+- Current implementation is intentionally basic (single markdown file per skill).
+- Current skill search is simple; a RAG-based retrieval layer is a likely next step.
+
+## Optional: Load Olist Dataset 📊
 
 ```bash
 make kaggle-prepare
@@ -120,90 +168,19 @@ make kaggle-download
 make kaggle-load
 ```
 
-This applies `infra/postgres/olist_schema.sql` and loads CSVs into `olist_*` tables.
+Or run all at once:
 
-## Local Testing (Without Docker) 🧪
-
-For backend/worker local testing, create `.env.local` in the repository root.  
-This is required because both services load `.env.local` when `APP_ENV != docker`.
-
-## Core API Endpoints 🔌
-
-Backend (`:8000`):
-
-- `GET /health`
-- `GET /reports`
-- `POST /reports`
-- `GET /reports/{report_id}/conversations`
-- `POST /reports/{report_id}/conversations`
-- `GET /conversations/{conversation_id}/messages`
-- `POST /conversations/{conversation_id}/messages`
-- `GET /reports/{report_id}/markdown`
-- `GET /reports/{report_id}/files/{file_path}`
-- `POST /agent/teach` (creates a learned skill from UI text)
-- `GET /skills`
-- `POST /skills`
-- `GET /skills/{skill_id}/conversations`
-- `POST /skills/{skill_id}/conversations`
-- `GET /skill-conversations/{skill_conversation_id}/messages`
-- `POST /skill-conversations/{skill_conversation_id}/messages`
-- `POST /skills/{skill_id}/publish`
-- `GET /agent/skills` (legacy compatibility endpoint)
-
-Worker (`:5000`):
-
-- `GET /health`
-- `POST /invoke`
-
-## Report Workspaces 🗂️
-
-Each report gets a workspace folder:
-
-```text
-/data/shared/jobs/report_<report_id>/
-  report.md
-  ...generated files (images, scripts, outputs)
+```bash
+make kaggle-setup
 ```
 
-Images/files can be referenced from markdown through backend file routes, for example:
+## Additional Docs 📚
 
-```md
-![Chart](/reports/12/files/sales_by_category.png)
-```
-
-## Skills 🧠
-
-Skills are user-taught behaviors stored in the shared Docker volume and consumed by worker agents.
-
-- Skill storage path:
-
-```text
-/data/shared/skills/<skill_name>/SKILL.md
-```
-
-- SKILL.md format:
-  - Uses YAML frontmatter with required `name` and `description`.
-  - Contains Markdown instructions for when/how to apply the skill.
-- UI flow:
-  - Click `Teach the Agent` in the top bar.
-  - The modal lets you submit new skill text.
-  - Existing skills are available from `Show learnt skills` (collapsed by default).
-- Runtime behavior:
-  - Main interface agent does not read skills directly.
-  - Worker code planner searches/reads relevant skills and adds notes to the plan.
-  - Worker code executor receives planner skill notes and can also search/read skills during execution.
-
-For more details, see [docs/skills.md](docs/skills.md).
-
-Current limitation: the Skills implementation is intentionally basic and currently writes only a `SKILL.md` file per skill. It does not yet scaffold richer skill packages (for example `scripts/`, `references/`, `assets/`, or advanced multi-file instructions). Also, current skill search is simplistic and limited; a RAG-based retrieval approach would likely be a better long-term solution. This can be expanded in a future pull request.
-
-## Observability 👀
-
-Langfuse instrumentation is enabled in backend and worker on startup. Set `LANGFUSE_*` variables in `.env` if you want traces persisted in the self-hosted Langfuse stack.
+- [docs/reports.md](docs/reports.md)
+- [docs/skills.md](docs/skills.md)
 
 ## Notes 📝
 
-- Current frontend is React + Vite (not Next.js).
-- Compose services install dependencies on container startup (`pip install` / `npm install`) for development convenience.
-- `infra/postgres/init.sql` is currently a placeholder; app schema is applied via `make db-init`.
-- `.env.local` is required when running backend/worker outside Docker (the code loads it when `APP_ENV != docker`).
+- Frontend is React + Vite.
+- App schema is applied via `make db-init` using `infra/postgres/app_schema.sql`.
+- `.env.local` is required for backend/worker local runs when `APP_ENV != docker`.

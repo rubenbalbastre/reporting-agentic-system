@@ -1,2 +1,0 @@
--- Initial DB bootstrap placeholder
--- Add schema and seed scripts here.

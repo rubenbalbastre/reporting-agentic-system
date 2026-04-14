@@ -1,24 +1,57 @@
-# Skills in ReportingAgent
+# Skills (Shared)
 
-This document describes the Skills feature added in this branch.
+This document describes the current shared Skills implementation.
 
 ## Overview
 
-Skills are reusable instructions learned from user text. They are created through the UI and stored in the shared Docker volume so worker agents can apply them in future tasks.
+Skills are reusable instructions learned through the `Teach the Agent` UI.
+
+## Purpose
+
+Skills are the app's reusable behavior feature: they let users teach domain/process guidance once and persist it as shared instructions that worker agents can apply in future tasks.
+
+Key design decision:
+
+- Skills are intended for worker agents (planner/executor).
+- Main interface agent does not directly consume shared skills.
 
 ## Storage
 
-Skills are stored in:
+Skills are stored in the shared Docker volume:
 
 ```text
-/data/shared/skills/<skill_name>/SKILL.md
+/data/shared/skills/<skill_slug>/SKILL.md
 ```
 
-`/data/shared` is backed by the `shared_data` Docker volume.
+`/data/shared` is backed by Docker volume `shared_data`.
 
-## SKILL.md format
+## File Structure
 
-Each skill must define YAML frontmatter and Markdown instructions.
+Current implementation writes only one file:
+
+```text
+<skill_slug>/
+  SKILL.md
+```
+
+Future extension may include:
+
+```text
+my-skill/
+  SKILL.md
+  scripts/
+  references/
+  assets/
+```
+
+## SKILL.md Format
+
+Frontmatter is assumed present and includes at least:
+
+- `name`
+- `description`
+
+Example:
 
 ```md
 ---
@@ -32,46 +65,69 @@ description: Extract PDF text, fill forms, merge files. Use when handling PDFs.
 Use this skill when the user needs to work with PDF files...
 ```
 
-Frontmatter keys used by the system:
+## Skill Data Model
 
-- `name` (required)
-- `description` (required)
+Database tables:
 
-## API
+- `skills` (master metadata)
+- `skill_conversations` (teaching chat sessions per skill)
+- `skill_messages` (chat history within a skill conversation)
 
-Backend endpoints:
+Relations:
 
-- `POST /agent/teach`
-  - Input: free-text user instruction
-  - Behavior: runs `skill_agent` to generate structured skill content and persists `SKILL.md`
-- `GET /agent/skills`
-  - Returns existing skills for UI listing (skill id, name, description, SKILL.md path)
+- `skills -> skill_conversations` (`ON DELETE CASCADE`)
+- `skill_conversations -> skill_messages` (`ON DELETE CASCADE`)
 
-## UI behavior
+## Backend API
 
-- Top bar includes `Teach the Agent`.
-- Clicking opens the teach modal.
-- Existing skills are hidden by default.
-- User can click `Show learnt skills` to fetch and display skills.
-- Saving a skill refreshes the list if it is visible.
+Primary endpoints:
 
-## Agent usage model
+- `GET /skills`
+- `POST /skills`
+- `DELETE /skills/{skill_id}`
+- `GET /skills/{skill_id}/markdown`
+- `GET /skills/{skill_id}/conversations`
+- `POST /skills/{skill_id}/conversations`
+- `GET /skill-conversations/{skill_conversation_id}/messages`
+- `POST /skill-conversations/{skill_conversation_id}/messages`
+- `POST /skills/{skill_id}/publish`
 
-- Main interface agent does not consume skills directly.
-- Worker code planner:
-  - Searches and reads relevant skills.
-  - Adds selected skills and usage notes into the execution plan.
-- Worker code executor:
-  - Receives planner skill notes.
-  - Can also search/read skills during execution when needed.
+Compatibility endpoints:
 
-## Prompt ownership
+- `POST /agent/teach` (legacy quick-save)
+- `GET /agent/skills` (legacy compatibility)
 
-Prompt templates are centralized in:
+## UX Flow
 
-- `backend/app/prompts.py` for backend agents, including `skill_agent`
-- `worker/app/prompts.py` for planner/executor worker agents
+`Teach the Agent` opens an almost full-window modal with:
 
-## Current limitation
+- Left panel: existing skills list (hide/show available)
+- Right panel:
+  - skill markdown preview
+  - skill teaching chat
 
-The current implementation is intentionally basic: skill creation persists only a single `SKILL.md` file in each skill directory. It does not yet generate richer skill packages such as `scripts/`, `references/`, `assets/`, or advanced multi-file examples/instructions. Skill search is also currently simplistic and can miss relevant matches; a RAG-based retrieval layer would likely improve relevance and scalability. This is a good candidate for a future pull request.
+Top-right controls:
+
+- `+` create a new skill draft
+- `🗑` delete selected skill
+- `Show Skills` / `Hide Skills`
+
+## Publish Behavior
+
+Publishing a skill:
+
+1. Reads selected skill conversation messages.
+2. Uses skill agent to generate structured output:
+   - `skill_name`
+   - `description`
+   - `skill_markdown`
+3. Writes `SKILL.md` into shared volume.
+4. Updates `skills` table metadata and `skill_md_path`.
+
+## Current Limitations
+
+- Implementation is intentionally basic: only `SKILL.md` is generated.
+- No automatic generation of code examples or multi-file skill package content yet.
+- Skill search is currently simplistic; a RAG-based retrieval layer likely makes more sense in future.
+
+This is a good candidate for a future pull request.
