@@ -1,0 +1,158 @@
+.app-shell {
+  height: 100vh;
+  padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 18px;
+  margin-bottom: 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: var(--panel);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+}
+
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.app-title {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  white-space: nowrap;
+}
+
+.app-title-brand {
+  color: #0b3a68;
+}
+
+.app-title-report {
+  color: #0071e3;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 36px;
+  font-size: 19px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+}
+
+.view-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.teach-btn {
+  background: linear-gradient(180deg, #0f766e 0%, #115e59 100%);
+  border-color: transparent;
+  color: #ffffff;
+}
+
+.teach-btn:hover {
+  border-color: transparent;
+  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.28);
+  filter: brightness(1.03);
+}
+
+.layout {
+  display: grid;
+  gap: 12px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.layout.with-sidebar.two-panels {
+  grid-template-columns: 260px 1fr 1fr;
+}
+
+.layout.no-sidebar.two-panels {
+  grid-template-columns: 1fr 1fr;
+}
+
+.layout.with-sidebar.report-only,
+.layout.with-sidebar.chat-only {
+  grid-template-columns: 260px 1fr;
+}
+
+.layout.no-sidebar.report-only,
+.layout.no-sidebar.chat-only {
+  grid-template-columns: 1fr;
+}
+
+.sidebar ul {
+  list-style: none;
+  margin: 0;
+  padding: 10px;
+  overflow: auto;
+}
+
+.sidebar li button {
+  width: 100%;
+  text-align: left;
+  border-radius: 12px;
+  margin-bottom: 6px;
+}
+
+.sidebar li button.active {
+  background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
+  color: #fff;
+  border-color: transparent;
+}
+
+.conversation-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.conversation-controls select {
+  min-width: 180px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.88);
+  color: var(--text);
+}
+
+.chat-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.btn-delete-report {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.btn-send-report {
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  border-color: transparent;
+}

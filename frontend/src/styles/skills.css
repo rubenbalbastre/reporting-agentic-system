@@ -1,0 +1,277 @@
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.25);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  z-index: 50;
+}
+
+.teach-modal {
+  width: 96vw;
+  height: 94vh;
+  overflow: hidden;
+  border-radius: 20px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  display: flex;
+  flex-direction: column;
+}
+
+.teach-header-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.teach-head-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.teach-title-skill {
+  color: #0071e3;
+}
+
+.teach-modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.skills-box {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.82);
+  padding: 10px 12px;
+}
+
+.skills-box h3 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.skills-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 170px;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skills-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: rgba(248, 250, 252, 0.9);
+  cursor: pointer;
+}
+
+.skills-item.active {
+  border-color: rgba(0, 113, 227, 0.4);
+  background: rgba(0, 113, 227, 0.08);
+}
+
+.skills-item-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.skills-item-desc {
+  font-size: 12px;
+  color: var(--subtext);
+}
+
+.skills-empty {
+  font-size: 12px;
+  color: var(--subtext);
+}
+
+.skill-empty-state {
+  height: 100%;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--line);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+}
+
+.teach-explore-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+  flex: 1;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.teach-explore-layout.sidebar-hidden {
+  grid-template-columns: 1fr;
+}
+
+.skills-box.skills-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.skills-box.skills-sidebar .skills-list {
+  max-height: none;
+  flex: 1;
+}
+
+.teach-explore-main {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.teach-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.teach-actions-left {
+  justify-content: flex-start;
+}
+
+.teach-actions select {
+  min-width: 220px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.88);
+}
+
+.teach-chat-box {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
+}
+
+.skill-chat-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.skill-chat-section .panel-head h3 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.teach-editor-info {
+  align-self: flex-start;
+  font-size: 12px;
+  color: #0f4c81;
+  background: rgba(14, 165, 233, 0.12);
+  border: 1px solid rgba(14, 165, 233, 0.22);
+  border-radius: 999px;
+  padding: 4px 10px;
+}
+
+.skill-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.skill-markdown-panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.skill-markdown-panel .panel-head {
+  padding: 12px 14px;
+}
+
+.skill-markdown-panel .panel-content {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding-top: 12px;
+}
+
+.btn-send-skill {
+  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.btn-publish-skill {
+  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.btn-delete-skill {
+  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+.skill-toggle-btn {
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.teach-status {
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 13px;
+}
+
+.teach-status.success {
+  color: #166534;
+  background: rgba(22, 163, 74, 0.12);
+  border: 1px solid rgba(22, 163, 74, 0.25);
+}
+
+.teach-status.error {
+  color: #991b1b;
+  background: rgba(220, 38, 38, 0.1);
+  border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+@media (max-width: 1080px) {
+  .skill-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .teach-explore-layout {
+    grid-template-columns: 1fr;
+  }
+}

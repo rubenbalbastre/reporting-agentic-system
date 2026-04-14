@@ -1,0 +1,220 @@
+:root {
+  --bg: #f4f5f7;
+  --panel: rgba(255, 255, 255, 0.76);
+  --line: rgba(16, 24, 40, 0.08);
+  --text: #111827;
+  --subtext: #4b5563;
+  --accent: #0071e3;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  margin: 0;
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue",
+    Helvetica, Arial, sans-serif;
+  background:
+    radial-gradient(1000px 500px at 0% -10%, #dfe8ff 0%, transparent 60%),
+    radial-gradient(900px 420px at 100% 0%, #e8f6ff 0%, transparent 55%),
+    linear-gradient(180deg, #f8fafc 0%, #f3f4f6 100%);
+}
+
+button {
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--text);
+  padding: 9px 12px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: all 120ms ease;
+}
+
+button:hover {
+  border-color: rgba(0, 113, 227, 0.32);
+  box-shadow: 0 4px 14px rgba(0, 113, 227, 0.15);
+}
+
+h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.panel,
+.sidebar {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.panel-head,
+.sidebar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.sidebar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.panel-content {
+  padding: 16px;
+  overflow: auto;
+  flex: 1;
+}
+
+.markdown-content {
+  color: var(--subtext);
+  line-height: 1.6;
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3 {
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 14px;
+  border: 1px solid var(--line);
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.1);
+}
+
+.markdown-content table,
+.message table {
+  width: 100%;
+  border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.markdown-content th,
+.markdown-content td,
+.message th,
+.message td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  text-align: left;
+}
+
+.markdown-content th,
+.message th {
+  color: var(--text);
+  font-weight: 600;
+  background: rgba(0, 113, 227, 0.06);
+}
+
+.markdown-content tr:last-child td,
+.message tr:last-child td {
+  border-bottom: none;
+}
+
+.markdown-content th:last-child,
+.markdown-content td:last-child,
+.message th:last-child,
+.message td:last-child {
+  border-right: none;
+}
+
+.message {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 12px;
+  color: var(--subtext);
+  background: rgba(255, 255, 255, 0.78);
+  max-width: 82%;
+}
+
+.message.user {
+  border-color: rgba(0, 113, 227, 0.2);
+  background: rgba(0, 113, 227, 0.08);
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.message.assistant {
+  border-color: rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  align-self: flex-start;
+  margin-right: auto;
+}
+
+.chat-input {
+  padding: 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  gap: 8px;
+}
+
+.chat-input input {
+  flex: 1;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.88);
+  outline: none;
+}
+
+.chat-input input:focus {
+  border-color: rgba(0, 113, 227, 0.5);
+  box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.12);
+}
+
+.icon-danger-btn {
+  min-width: 38px;
+  width: 38px;
+  padding: 9px 0;
+  text-align: center;
+}
+
+.icon-action-btn {
+  min-width: 38px;
+  width: 38px;
+  padding: 9px 0;
+  text-align: center;
+  font-size: 18px;
+  line-height: 1;
+  background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
+  color: #ffffff;
+  border-color: transparent;
+}
+
+@media (max-width: 1080px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+}

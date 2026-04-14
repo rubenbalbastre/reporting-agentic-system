@@ -54,30 +54,32 @@ export default function TeachAgentModal({
         <div className="teach-editor-info" title="Name and description are generated when publishing the skill.">
           Name and description are generated when publishing.
         </div>
-        <div className="teach-actions teach-actions-left">
-          <select
-            value={activeSkillConversationId || ""}
-            onChange={(e) => onConversationChange(Number(e.target.value))}
-            disabled={skillConversations.length === 0}
-          >
-            {skillConversations.length === 0 ? (
-              <option value="">No conversations</option>
-            ) : (
-              skillConversations.map((c) => (
-                <option key={c.id} value={c.id}>
-                  Skill Conversation #{c.id}
-                </option>
-              ))
-            )}
-          </select>
-          <button
-            className="icon-action-btn"
-            onClick={onCreateSkillConversation}
-            title="New skill conversation"
-            aria-label="New skill conversation"
-          >
-            <span role="img" aria-hidden="true">✏️</span>
-          </button>
+        <div className="panel-head">
+          <h3>Working Chat</h3>
+          <div className="teach-actions teach-actions-left">
+            <select
+              value={activeSkillConversationId || ""}
+              onChange={(e) => onConversationChange(Number(e.target.value))}
+              disabled={skillConversations.length === 0}
+            >
+              {skillConversations.length === 0 ? (
+                <option value="">No conversations</option>
+              ) : (
+                skillConversations.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    Skill Conversation #{c.id}
+                  </option>
+                ))
+              )}
+            </select>
+            <button
+              onClick={onCreateSkillConversation}
+              title="New skill conversation"
+              aria-label="New skill conversation"
+            >
+              <span role="img" aria-hidden="true">✏️</span>
+            </button>
+          </div>
         </div>
         <div className="teach-chat-box">
           {skillMessages.map((msg) => (
@@ -86,16 +88,20 @@ export default function TeachAgentModal({
             </div>
           ))}
         </div>
-        <textarea
-          value={teachInput}
-          onChange={(e) => onTeachInput(e.target.value)}
-          placeholder="Describe or refine this skill..."
-          rows={4}
-        />
-        <div className="teach-actions">
+        <div className="chat-input">
+          <input
+            value={teachInput}
+            onChange={(e) => onTeachInput(e.target.value)}
+            placeholder="Describe or refine this skill..."
+            onKeyDown={(e) => {
+              if (e.key === "Enter") onSendSkillMessage();
+            }}
+          />
           <button className="btn-send-skill" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
             {teachLoading ? "Sending..." : "Send"}
           </button>
+        </div>
+        <div className="teach-actions">
           <button
             className="btn-publish-skill"
             onClick={onPublishSkill}
@@ -118,41 +124,25 @@ export default function TeachAgentModal({
         aria-label="Teach the Agent"
       >
         <div className="panel-head">
-          <h2>
-            Teach the Agent
-            {isSkillEditingView && activeSkill ? (
-              <>
-                : <span className="teach-title-skill">Skill {activeSkill.name}</span>
-              </>
-            ) : null}
-          </h2>
-          <div className="teach-header-actions">
+          <div className="teach-head-left">
             <button
-              className="icon-action-btn"
-              onClick={handleCreateSkillClick}
-              disabled={createSkillLoading}
-              title={createSkillLoading ? "Creating skill..." : "Create new skill"}
-              aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
+              className="icon-action-btn skill-toggle-btn"
+              onClick={() => setSkillsSidebarHidden((v) => !v)}
+              title={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
+              aria-label={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
             >
-              {createSkillLoading ? "…" : "+"}
+              <span role="img" aria-hidden="true">🛠️</span>
             </button>
-            <button onClick={() => setSkillsSidebarHidden((v) => !v)}>
-              {skillsSidebarHidden ? "Show Skills" : "Hide Skills"}
-            </button>
-            {isSkillEditingView && (
-              <button
-                className="btn-delete-skill icon-danger-btn"
-                onClick={() => {
-                  const confirmed = window.confirm("Delete this skill and all its skill conversations?");
-                  if (confirmed) onDeleteSkill();
-                }}
-                disabled={deleteSkillLoading}
-                title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
-                aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
-              >
-                {deleteSkillLoading ? "…" : "🗑"}
-              </button>
-            )}
+            <h2>
+              Teach the Agent
+              {isSkillEditingView && activeSkill ? (
+                <>
+                  : <span className="teach-title-skill">Skill {activeSkill.name}</span>
+                </>
+              ) : null}
+            </h2>
+          </div>
+          <div className="teach-header-actions">
             <button onClick={onClose}>Close</button>
           </div>
         </div>
@@ -161,7 +151,33 @@ export default function TeachAgentModal({
           <div className={`teach-explore-layout ${showExploreSidebar ? "" : "sidebar-hidden"}`}>
             {showExploreSidebar && (
               <div className="skills-box skills-sidebar">
-                <h3>Existing Skills</h3>
+                <div className="sidebar-head">
+                  <h3>Skills</h3>
+                  <div className="sidebar-actions">
+                    <button
+                      className="icon-action-btn"
+                      onClick={handleCreateSkillClick}
+                      disabled={createSkillLoading}
+                      title={createSkillLoading ? "Creating skill..." : "Create new skill"}
+                      aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
+                    >
+                      {createSkillLoading ? "…" : "+"}
+                    </button>
+                    <button
+                      className="btn-delete-skill icon-danger-btn"
+                      onClick={() => {
+                        if (!isSkillEditingView) return;
+                        const confirmed = window.confirm("Delete this skill and all its skill conversations?");
+                        if (confirmed) onDeleteSkill();
+                      }}
+                      disabled={!isSkillEditingView || deleteSkillLoading}
+                      title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
+                      aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
+                    >
+                      {deleteSkillLoading ? "…" : "🗑"}
+                    </button>
+                  </div>
+                </div>
                 {skillsLoading ? (
                   <div className="skills-empty">Loading skills...</div>
                 ) : skills.length === 0 ? (

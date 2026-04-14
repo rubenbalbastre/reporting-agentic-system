@@ -64,7 +64,7 @@ export default function ReportChatPanel({
             if (e.key === "Enter") onSendMessage();
           }}
         />
-        <button onClick={onSendMessage}>Send</button>
+        <button className="btn-send-report" onClick={onSendMessage}>Send</button>
       </div>
     </section>
   );
