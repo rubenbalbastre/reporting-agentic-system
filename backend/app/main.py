@@ -1,6 +1,7 @@
 import os
 import mimetypes
 import json
+import shutil
 from datetime import datetime, timezone
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
@@ -536,6 +537,30 @@ def create_skill(payload: CreateSkillRequest) -> Skill:
             )
         conn.commit()
     return Skill(**row)
+
+
+@app.delete("/skills/{skill_id}", status_code=204)
+def delete_skill(skill_id: int) -> None:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = _get_skill(cur, skill_id)
+            cur.execute("DELETE FROM skills WHERE id = %s;", (skill_id,))
+        conn.commit()
+
+    raw_path = (skill.get("skill_md_path") or "").strip()
+    if not raw_path:
+        return
+
+    try:
+        skill_md = Path(raw_path).resolve()
+        if skill_md.exists() and skill_md.is_file():
+            skill_md.unlink()
+        skill_dir = skill_md.parent
+        if skill_dir.exists() and skill_dir.is_dir():
+            shutil.rmtree(skill_dir, ignore_errors=True)
+    except Exception:
+        # DB delete already succeeded; filesystem cleanup is best-effort.
+        pass
 
 
 @app.get("/skills/{skill_id}/conversations", response_model=list[SkillConversation])

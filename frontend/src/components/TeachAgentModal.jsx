@@ -9,6 +9,7 @@ export default function TeachAgentModal({
   skillsLoading,
   activeSkillId,
   createSkillLoading,
+  deleteSkillLoading,
   skillConversations,
   activeSkillConversationId,
   skillMessages,
@@ -21,6 +22,7 @@ export default function TeachAgentModal({
   onSetTeachMode,
   onSelectSkill,
   onCreateSkill,
+  onDeleteSkill,
   onConversationChange,
   onCreateSkillConversation,
   onTeachInput,
@@ -124,6 +126,18 @@ export default function TeachAgentModal({
             {isSkillEditingView && (
               <button onClick={() => setSkillsSidebarHidden((v) => !v)}>
                 {skillsSidebarHidden ? "Show Skills" : "Hide Skills"}
+              </button>
+            )}
+            {isSkillEditingView && (
+              <button
+                className="btn-delete-skill"
+                onClick={() => {
+                  const confirmed = window.confirm("Delete this skill and all its skill conversations?");
+                  if (confirmed) onDeleteSkill();
+                }}
+                disabled={deleteSkillLoading}
+              >
+                {deleteSkillLoading ? "Deleting..." : "Delete Skill"}
               </button>
             )}
             <button onClick={onClose}>Close</button>

@@ -100,6 +100,7 @@ export default function App() {
         skillsLoading={skill.skillsLoading}
         activeSkillId={skill.activeSkillId}
         createSkillLoading={skill.createSkillLoading}
+        deleteSkillLoading={skill.deleteSkillLoading}
         skillConversations={skill.skillConversations}
         activeSkillConversationId={skill.activeSkillConversationId}
         skillMessages={skill.skillMessages}
@@ -112,6 +113,7 @@ export default function App() {
         onSetTeachMode={skill.setTeachMode}
         onSelectSkill={skill.setActiveSkillId}
         onCreateSkill={skill.createSkill}
+        onDeleteSkill={skill.deleteSkill}
         onConversationChange={skill.setActiveSkillConversationId}
         onCreateSkillConversation={skill.createSkillConversation}
         onTeachInput={skill.setTeachInput}

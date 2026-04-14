@@ -25,8 +25,16 @@ async function post(path, body) {
   return parseJson(res);
 }
 
+async function del(path) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: "DELETE",
+  });
+  return parseJson(res);
+}
+
 export const api = {
   API_BASE,
   get,
   post,
+  del,
 };

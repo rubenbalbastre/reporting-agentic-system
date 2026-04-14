@@ -11,6 +11,7 @@ export function useSkillTeaching() {
   const [skills, setSkills] = useState([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
   const [createSkillLoading, setCreateSkillLoading] = useState(false);
+  const [deleteSkillLoading, setDeleteSkillLoading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
 
   const [activeSkillId, setActiveSkillId] = useState(null);
@@ -83,6 +84,29 @@ export function useSkillTeaching() {
       });
     } finally {
       setCreateSkillLoading(false);
+    }
+  }
+
+  async function deleteSkill() {
+    if (!activeSkillId || deleteSkillLoading) return;
+    setDeleteSkillLoading(true);
+    setTeachStatus(null);
+    try {
+      const { ok, data } = await api.del(`/skills/${activeSkillId}`);
+      if (!ok) {
+        setTeachStatus({ type: "error", text: data.detail || "Failed to delete skill" });
+        return;
+      }
+      setTeachStatus({ type: "success", text: "Skill deleted" });
+      setActiveSkillId(null);
+      setActiveSkillConversationId(null);
+      setSkillMessages([]);
+      setSkillMarkdown("");
+      await loadSkills();
+    } catch (_err) {
+      setTeachStatus({ type: "error", text: "Network error while deleting skill" });
+    } finally {
+      setDeleteSkillLoading(false);
     }
   }
 
@@ -196,6 +220,7 @@ export function useSkillTeaching() {
     skills,
     skillsLoading,
     createSkillLoading,
+    deleteSkillLoading,
     publishLoading,
     activeSkillId,
     setActiveSkillId,
@@ -205,6 +230,7 @@ export function useSkillTeaching() {
     skillMessages,
     skillMarkdown,
     createSkill,
+    deleteSkill,
     createSkillConversation,
     sendSkillMessage,
     publishSkill,
