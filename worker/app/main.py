@@ -21,10 +21,13 @@ async def lifespan(app: FastAPI):
     OpenAIAgentsInstrumentor().instrument()
 
     langfuse = get_client()
-    if langfuse.auth_check():
-        print("Langfuse client is authenticated and ready!")
-    else:
-        print("Authentication failed. Please check your credentials and host.")
+    try:
+        if langfuse.auth_check():
+            print("Langfuse client is authenticated and ready!")
+        else:
+            print("Langfuse authentication failed. Continuing without blocking startup.")
+    except Exception as exc:
+        print(f"Langfuse check failed ({exc}). Continuing startup without Langfuse readiness check.")
 
     yield  # <-- app is running here
 
