@@ -46,10 +46,13 @@ async def lifespan(app: FastAPI):
     OpenAIAgentsInstrumentor().instrument()
 
     langfuse = get_client()
-    if langfuse.auth_check():
-        print("Langfuse client is authenticated and ready!")
-    else:
-        print("Authentication failed. Please check your credentials and host.")
+    try:
+        if langfuse.auth_check():
+            print("Langfuse client is authenticated and ready!")
+        else:
+            print("Langfuse authentication failed. Continuing without blocking startup.")
+    except Exception as exc:
+        print(f"Langfuse check failed ({exc}). Continuing startup without Langfuse readiness check.")
 
     yield  # <-- app is running here
 
@@ -213,6 +216,17 @@ def _read_report_markdown(report_id: int) -> str:
     _ensure_report_markdown_exists(report_id)
     report_path = get_report_markdown_path(report_id)
     return report_path.read_text(encoding="utf-8")
+
+
+def _read_skill_markdown(skill: dict[str, Any]) -> str:
+    raw_path = (skill.get("skill_md_path") or "").strip()
+    if not raw_path:
+        raise HTTPException(status_code=404, detail="Skill markdown has not been published yet")
+
+    path = Path(raw_path).resolve()
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Skill markdown file not found")
+    return path.read_text(encoding="utf-8")
 
 
 def _parse_skill_agent_output(raw_output: str) -> dict[str, str]:
@@ -471,6 +485,14 @@ def list_skills() -> list[Skill]:
             )
             rows = cur.fetchall()
     return [Skill(**row) for row in rows]
+
+
+@app.get("/skills/{skill_id}/markdown")
+def get_skill_markdown(skill_id: int) -> dict[str, str]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = _get_skill(cur, skill_id)
+    return {"content": _read_skill_markdown(skill)}
 
 
 @app.post("/skills", response_model=Skill, status_code=201)

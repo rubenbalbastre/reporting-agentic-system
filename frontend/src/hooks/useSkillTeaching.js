@@ -6,7 +6,6 @@ export function useSkillTeaching() {
   const [teachInput, setTeachInput] = useState("");
   const [teachStatus, setTeachStatus] = useState(null);
   const [teachLoading, setTeachLoading] = useState(false);
-  const [teachExpanded, setTeachExpanded] = useState(false);
   const [teachMode, setTeachMode] = useState(null);
 
   const [skills, setSkills] = useState([]);
@@ -19,11 +18,11 @@ export function useSkillTeaching() {
   const [skillConversations, setSkillConversations] = useState([]);
   const [activeSkillConversationId, setActiveSkillConversationId] = useState(null);
   const [skillMessages, setSkillMessages] = useState([]);
+  const [skillMarkdown, setSkillMarkdown] = useState("");
 
   useEffect(() => {
     if (!teachModalOpen) {
       setTeachMode(null);
-      setTeachExpanded(false);
       setActiveSkillId(null);
       setActiveSkillConversationId(null);
       setSkillMessages([]);
@@ -36,9 +35,11 @@ export function useSkillTeaching() {
     if (!activeSkillId) {
       setSkillConversations([]);
       setActiveSkillConversationId(null);
+      setSkillMarkdown("");
       return;
     }
     loadSkillConversations(activeSkillId);
+    loadSkillMarkdown(activeSkillId);
   }, [activeSkillId]);
 
   useEffect(() => {
@@ -113,6 +114,15 @@ export function useSkillTeaching() {
     setSkillMessages(ok && Array.isArray(data) ? data : []);
   }
 
+  async function loadSkillMarkdown(skillId) {
+    const { ok, data } = await api.get(`/skills/${skillId}/markdown`);
+    if (!ok) {
+      setSkillMarkdown("# Skill markdown not published yet");
+      return;
+    }
+    setSkillMarkdown(data.content || "");
+  }
+
   async function sendSkillMessage() {
     if (!activeSkillConversationId || !teachInput.trim() || teachLoading) return;
     const content = teachInput.trim();
@@ -147,6 +157,7 @@ export function useSkillTeaching() {
       }
       setTeachStatus({ type: "success", text: `Published ${data.name}` });
       await loadSkills();
+      await loadSkillMarkdown(activeSkillId);
     } catch (_err) {
       setTeachStatus({ type: "error", text: "Network error while publishing skill" });
     } finally {
@@ -182,8 +193,6 @@ export function useSkillTeaching() {
     setTeachInput,
     teachStatus,
     teachLoading,
-    teachExpanded,
-    setTeachExpanded,
     teachMode,
     setTeachMode,
     skills,
@@ -198,6 +207,7 @@ export function useSkillTeaching() {
     activeSkillConversationId,
     setActiveSkillConversationId,
     skillMessages,
+    skillMarkdown,
     createSkill,
     createSkillConversation,
     sendSkillMessage,

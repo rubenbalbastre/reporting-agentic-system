@@ -296,8 +296,8 @@ h2 {
 }
 
 .teach-modal {
-  width: min(720px, 100%);
-  max-height: calc(100vh - 32px);
+  width: min(1280px, 96vw);
+  max-height: calc(100vh - 20px);
   overflow: hidden;
   border-radius: 20px;
   border: 1px solid var(--line);
@@ -307,11 +307,6 @@ h2 {
   box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
   display: flex;
   flex-direction: column;
-}
-
-.teach-modal.expanded {
-  width: min(1280px, 96vw);
-  max-height: calc(100vh - 20px);
 }
 
 .teach-header-actions {
@@ -420,6 +415,32 @@ h2 {
   background: rgba(255, 255, 255, 0.88);
 }
 
+.teach-explore-layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.teach-explore-layout.sidebar-hidden {
+  grid-template-columns: 1fr;
+}
+
+.skills-box.skills-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.skills-box.skills-sidebar .skills-list {
+  max-height: none;
+  flex: 1;
+}
+
+.teach-explore-main {
+  min-height: 0;
+}
+
 .teach-actions select {
   min-width: 220px;
   border: 1px solid var(--line);
@@ -429,18 +450,13 @@ h2 {
 }
 
 .teach-chat-box {
-  min-height: 320px;
-  max-height: 52vh;
+  min-height: 60vh;
+  max-height: 68vh;
   overflow: auto;
   display: flex;
   flex-direction: column;
   gap: 8px;
   padding-right: 4px;
-}
-
-.teach-modal.expanded .teach-chat-box {
-  min-height: 60vh;
-  max-height: 68vh;
 }
 
 .btn-create-skill {
@@ -484,6 +500,30 @@ h2 {
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+}
+
+.skill-workspace {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  min-height: 0;
+}
+
+.skill-markdown-panel {
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.86);
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.skill-markdown-panel .panel-head {
+  padding: 12px 14px;
+}
+
+.skill-markdown-panel .panel-content {
+  padding-top: 12px;
 }
 
 .teach-actions {
@@ -547,5 +587,13 @@ h2 {
   .layout {
     grid-template-columns: 1fr;
     min-height: auto;
+  }
+
+  .skill-workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .teach-explore-layout {
+    grid-template-columns: 1fr;
   }
 }

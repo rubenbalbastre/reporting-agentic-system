@@ -95,7 +95,6 @@ export default function App() {
 
       <TeachAgentModal
         open={skill.teachModalOpen}
-        expanded={skill.teachExpanded}
         teachMode={skill.teachMode}
         skills={skill.skills}
         skillsLoading={skill.skillsLoading}
@@ -105,12 +104,12 @@ export default function App() {
         skillConversations={skill.skillConversations}
         activeSkillConversationId={skill.activeSkillConversationId}
         skillMessages={skill.skillMessages}
+        skillMarkdown={skill.skillMarkdown}
         teachInput={skill.teachInput}
         teachLoading={skill.teachLoading}
         publishLoading={skill.publishLoading}
         teachStatus={skill.teachStatus}
         onClose={() => skill.setTeachModalOpen(false)}
-        onToggleExpanded={() => skill.setTeachExpanded((v) => !v)}
         onSetTeachMode={skill.setTeachMode}
         onSelectSkill={skill.setActiveSkillId}
         onNewSkillName={skill.setNewSkillName}
@@ -120,7 +119,6 @@ export default function App() {
         onTeachInput={skill.setTeachInput}
         onSendSkillMessage={skill.sendSkillMessage}
         onPublishSkill={skill.publishSkill}
-        onLegacyQuickSave={skill.legacyQuickSave}
       />
     </div>
   );
