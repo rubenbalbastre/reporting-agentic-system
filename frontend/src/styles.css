@@ -360,6 +360,12 @@ h2 {
   border-radius: 14px;
 }
 
+.teach-mode-grid .icon-action-btn {
+  width: 100%;
+  min-width: 0;
+  font-size: 24px;
+}
+
 .teach-mode-explore {
   background: linear-gradient(180deg, #e0f2fe 0%, #bae6fd 100%);
   color: #075985;

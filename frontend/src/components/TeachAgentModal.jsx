@@ -73,7 +73,14 @@ export default function TeachAgentModal({
               ))
             )}
           </select>
-          <button onClick={onCreateSkillConversation}>New Skill Conversation</button>
+          <button
+            className="icon-action-btn"
+            onClick={onCreateSkillConversation}
+            title="New skill conversation"
+            aria-label="New skill conversation"
+          >
+            <span role="img" aria-hidden="true">✏️</span>
+          </button>
         </div>
         <div className="teach-chat-box">
           {skillMessages.map((msg) => (
@@ -130,14 +137,16 @@ export default function TeachAgentModal({
             )}
             {isSkillEditingView && (
               <button
-                className="btn-delete-skill"
+                className="btn-delete-skill icon-danger-btn"
                 onClick={() => {
                   const confirmed = window.confirm("Delete this skill and all its skill conversations?");
                   if (confirmed) onDeleteSkill();
                 }}
                 disabled={deleteSkillLoading}
+                title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
+                aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
               >
-                {deleteSkillLoading ? "Deleting..." : "Delete Skill"}
+                {deleteSkillLoading ? "…" : "🗑"}
               </button>
             )}
             <button onClick={onClose}>Close</button>
@@ -153,11 +162,13 @@ export default function TeachAgentModal({
                 Explore Existing Skills
               </button>
               <button
-                className={`teach-mode-btn teach-mode-create ${teachMode === "create" ? "active" : ""}`}
+                className={`teach-mode-btn teach-mode-create icon-action-btn ${teachMode === "create" ? "active" : ""}`}
                 onClick={onCreateSkill}
                 disabled={createSkillLoading}
+                title={createSkillLoading ? "Creating skill..." : "Create new skill"}
+                aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
               >
-                {createSkillLoading ? "Creating..." : "Create New Skill"}
+                {createSkillLoading ? "…" : "+"}
               </button>
             </div>
           )}
