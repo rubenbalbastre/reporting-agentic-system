@@ -1,6 +1,8 @@
 import os
 import mimetypes
 import json
+import shutil
+from datetime import datetime, timezone
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,16 +13,22 @@ from agents import Runner
 from pathlib import Path
 from app.schemas import (
     Report,
+    Conversation,
     Message,
     CreateReportRequest,
     CreateMessageRequest,
     TeachAgentRequest,
     TeachAgentResponse,
     SkillSummary,
+    Skill,
+    CreateSkillRequest,
+    SkillConversation,
+    SkillMessage,
+    PublishSkillRequest,
 )
 from app.agent import build_main_agent
-from app.skill_agent import build_skill_agent
-from app.skills import create_skill_from_request, create_skill_from_agent_output, list_existing_skills
+from app.skill_agent import build_skill_agent, build_skill_chat_agent
+from app.skills import create_skill_from_request, create_skill_from_agent_output, list_existing_skills, slugify
 from app.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 from openinference.instrumentation.openai_agents import OpenAIAgentsInstrumentor
 from langfuse import get_client
@@ -39,10 +47,13 @@ async def lifespan(app: FastAPI):
     OpenAIAgentsInstrumentor().instrument()
 
     langfuse = get_client()
-    if langfuse.auth_check():
-        print("Langfuse client is authenticated and ready!")
-    else:
-        print("Authentication failed. Please check your credentials and host.")
+    try:
+        if langfuse.auth_check():
+            print("Langfuse client is authenticated and ready!")
+        else:
+            print("Langfuse authentication failed. Continuing without blocking startup.")
+    except Exception as exc:
+        print(f"Langfuse check failed ({exc}). Continuing startup without Langfuse readiness check.")
 
     yield  # <-- app is running here
 
@@ -83,43 +94,65 @@ def _ensure_report_exists(cur: Any, report_id: int) -> None:
         raise HTTPException(status_code=404, detail="Report not found")
 
 
-def _load_report_history(report_id: int) -> list[dict[str, Any]]:
-    with get_db_connection() as conn:
-        with conn.cursor() as cur:
-            _ensure_report_exists(cur, report_id)
-            cur.execute(
-                """
-                SELECT m.role, m.content
-                FROM messages m
-                JOIN conversations c ON c.id = m.conversation_id
-                WHERE c.report_id = %s
-                ORDER BY m.id ASC;
-                """,
-                (report_id,),
-            )
-            return cur.fetchall()
-
-
-def _get_or_create_conversation_id(cur: Any, report_id: int) -> int:
+def _get_conversation(cur: Any, conversation_id: int) -> dict[str, Any]:
     cur.execute(
         """
-        SELECT id
+        SELECT id, report_id, created_at
         FROM conversations
-        WHERE report_id = %s
-        ORDER BY id ASC
-        LIMIT 1;
+        WHERE id = %s;
         """,
-        (report_id,),
+        (conversation_id,),
     )
-    conversation = cur.fetchone()
-    if conversation is not None:
-        return conversation["id"]
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+    return row
 
+
+def _get_skill(cur: Any, skill_id: int) -> dict[str, Any]:
     cur.execute(
-        "INSERT INTO conversations (report_id) VALUES (%s) RETURNING id;",
-        (report_id,),
+        """
+        SELECT id, name, description, slug, skill_md_path, created_at, updated_at
+        FROM skills
+        WHERE id = %s;
+        """,
+        (skill_id,),
     )
-    return cur.fetchone()["id"]
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Skill not found")
+    return row
+
+
+def _get_skill_conversation(cur: Any, skill_conversation_id: int) -> dict[str, Any]:
+    cur.execute(
+        """
+        SELECT id, skill_id, created_at
+        FROM skill_conversations
+        WHERE id = %s;
+        """,
+        (skill_conversation_id,),
+    )
+    row = cur.fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail="Skill conversation not found")
+    return row
+
+
+def _load_conversation_history(conversation_id: int) -> tuple[int, list[dict[str, Any]]]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            conversation = _get_conversation(cur, conversation_id)
+            cur.execute(
+                """
+                SELECT role, content
+                FROM messages
+                WHERE conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (conversation_id,),
+            )
+            return conversation["report_id"], cur.fetchall()
 
 
 def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, content: str) -> dict[str, Any]:
@@ -134,11 +167,13 @@ def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, c
     return cur.fetchone()
 
 
-def _persist_message_pair(report_id: int, user_content: str, assistant_content: str) -> tuple[Message, Message]:
+def _persist_message_pair_for_conversation(
+    conversation_id: int, report_id: int, user_content: str, assistant_content: str
+) -> tuple[Message, Message]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             _ensure_report_exists(cur, report_id)
-            conversation_id = _get_or_create_conversation_id(cur, report_id)
+            _get_conversation(cur, conversation_id)
             user_row = _insert_message(cur, conversation_id, report_id, "user", user_content)
             assistant_row = _insert_message(cur, conversation_id, report_id, "assistant", assistant_content)
         conn.commit()
@@ -184,6 +219,17 @@ def _read_report_markdown(report_id: int) -> str:
     return report_path.read_text(encoding="utf-8")
 
 
+def _read_skill_markdown(skill: dict[str, Any]) -> str:
+    raw_path = (skill.get("skill_md_path") or "").strip()
+    if not raw_path:
+        raise HTTPException(status_code=404, detail="Skill markdown has not been published yet")
+
+    path = Path(raw_path).resolve()
+    if not path.exists() or not path.is_file():
+        raise HTTPException(status_code=404, detail="Skill markdown file not found")
+    return path.read_text(encoding="utf-8")
+
+
 def _parse_skill_agent_output(raw_output: str) -> dict[str, str]:
     text = (raw_output or "").strip()
     if text.startswith("```"):
@@ -196,6 +242,58 @@ def _parse_skill_agent_output(raw_output: str) -> dict[str, str]:
         "description": str(payload.get("description", "")).strip(),
         "skill_markdown": str(payload.get("skill_markdown", "")).strip(),
     }
+
+
+def _build_skill_chat_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
+    recent = history_rows[-max_messages:]
+    lines = []
+    for row in recent:
+        lines.append(f"{row['role']}: {row['content']}")
+    lines.append(f"user: {user_content}")
+    return "Skill teaching conversation:\n" + "\n".join(lines)
+
+
+def _load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, list[dict[str, Any]]]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            convo = _get_skill_conversation(cur, skill_conversation_id)
+            cur.execute(
+                """
+                SELECT role, content
+                FROM skill_messages
+                WHERE skill_conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (skill_conversation_id,),
+            )
+            return convo["skill_id"], cur.fetchall()
+
+
+def _insert_skill_message(
+    cur: Any, skill_conversation_id: int, skill_id: int, role: str, content: str
+) -> dict[str, Any]:
+    cur.execute(
+        """
+        INSERT INTO skill_messages (skill_conversation_id, role, content)
+        VALUES (%s, %s, %s)
+        RETURNING id, %s AS skill_id, %s AS skill_conversation_id, role, content, created_at;
+        """,
+        (skill_conversation_id, role, content, skill_id, skill_conversation_id),
+    )
+    return cur.fetchone()
+
+
+def _persist_skill_message_pair(
+    skill_conversation_id: int, skill_id: int, user_content: str, assistant_content: str
+) -> tuple[SkillMessage, SkillMessage]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _get_skill(cur, skill_id)
+            _get_skill_conversation(cur, skill_conversation_id)
+            user_row = _insert_skill_message(cur, skill_conversation_id, skill_id, "user", user_content)
+            assistant_row = _insert_skill_message(cur, skill_conversation_id, skill_id, "assistant", assistant_content)
+        conn.commit()
+    return SkillMessage(**user_row), SkillMessage(**assistant_row)
 
 
 @app.get("/reports")
@@ -241,24 +339,77 @@ def create_report(payload: CreateReportRequest) -> Report:
     return report
 
 
-@app.get("/reports/{report_id}/messages")
-def list_messages(report_id: int) -> List[Message]:
+@app.delete("/reports/{report_id}", status_code=204)
+def delete_report(report_id: int) -> None:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            cur.execute("SELECT id FROM reports WHERE id = %s;", (report_id,))
-            if cur.fetchone() is None:
-                raise HTTPException(status_code=404, detail="Report not found")
+            _ensure_report_exists(cur, report_id)
+            cur.execute("DELETE FROM reports WHERE id = %s;", (report_id,))
+        conn.commit()
+
+    try:
+        workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs")).resolve()
+        report_workspace = (workspace_root / f"report_{report_id}").resolve()
+        if report_workspace.exists() and report_workspace.is_dir():
+            shutil.rmtree(report_workspace, ignore_errors=True)
+    except Exception:
+        # DB delete already succeeded; workspace cleanup is best-effort.
+        pass
+
+
+@app.get("/reports/{report_id}/conversations")
+def list_conversations(report_id: int) -> List[Conversation]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+            cur.execute(
+                """
+                SELECT id, report_id, created_at
+                FROM conversations
+                WHERE report_id = %s
+                ORDER BY id DESC;
+                """,
+                (report_id,),
+            )
+            rows = cur.fetchall()
+    return [Conversation(**row) for row in rows]
+
+
+@app.post("/reports/{report_id}/conversations", status_code=201)
+def create_conversation(report_id: int) -> Conversation:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+            cur.execute(
+                """
+                INSERT INTO conversations (report_id)
+                VALUES (%s)
+                RETURNING id, report_id, created_at;
+                """,
+                (report_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return Conversation(**row)
+
+
+@app.get("/conversations/{conversation_id}/messages")
+def list_conversation_messages(conversation_id: int) -> List[Message]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            conversation = _get_conversation(cur, conversation_id)
             cur.execute(
                 """
                 SELECT m.id, c.report_id, m.role, m.content, m.created_at
                 FROM messages m
                 JOIN conversations c ON c.id = m.conversation_id
-                WHERE c.report_id = %s
+                WHERE m.conversation_id = %s
                 ORDER BY m.id ASC;
                 """,
-                (report_id,),
+                (conversation_id,),
             )
             rows = cur.fetchall()
+    _ = conversation
     return [Message(**row) for row in rows]
 
 
@@ -285,14 +436,13 @@ def get_report_file(report_id: int, file_path: str):
     return FileResponse(path=safe_file_path, media_type=media_type)
 
 
-@app.post("/reports/{report_id}/messages", status_code=201)
-async def create_message(report_id: int, payload: CreateMessageRequest):
-
+@app.post("/conversations/{conversation_id}/messages", status_code=201)
+async def create_conversation_message(conversation_id: int, payload: CreateMessageRequest):
     user_content = payload.content.strip()
     if not user_content:
         raise HTTPException(status_code=400, detail="Message content is required")
 
-    history_rows = _load_report_history(report_id)
+    report_id, history_rows = _load_conversation_history(conversation_id)
     _ensure_report_markdown_exists(report_id)
 
     try:
@@ -303,12 +453,12 @@ async def create_message(report_id: int, payload: CreateMessageRequest):
     except Exception:
         assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."
 
-    user_message, assistant_message = _persist_message_pair(
+    user_message, assistant_message = _persist_message_pair_for_conversation(
+        conversation_id=conversation_id,
         report_id=report_id,
         user_content=user_content,
         assistant_content=assistant_content,
     )
-
     return {"messages": [user_message, assistant_message]}
 
 
@@ -341,8 +491,263 @@ async def teach_agent(payload: TeachAgentRequest) -> TeachAgentResponse:
     )
 
 
+@app.get("/skills", response_model=list[Skill])
+def list_skills() -> list[Skill]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT id, name, description, slug, skill_md_path, created_at, updated_at
+                FROM skills
+                ORDER BY id DESC;
+                """
+            )
+            rows = cur.fetchall()
+    return [Skill(**row) for row in rows]
+
+
+@app.get("/skills/{skill_id}/markdown")
+def get_skill_markdown(skill_id: int) -> dict[str, str]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = _get_skill(cur, skill_id)
+    return {"content": _read_skill_markdown(skill)}
+
+
+@app.post("/skills", response_model=Skill, status_code=201)
+def create_skill(payload: CreateSkillRequest) -> Skill:
+    name = payload.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="Skill name is required")
+    description = ""
+    base_slug = slugify(name)
+    slug = base_slug
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            row = None
+            for attempt in range(2):
+                try:
+                    cur.execute(
+                        """
+                        INSERT INTO skills (name, description, slug)
+                        VALUES (%s, %s, %s)
+                        RETURNING id, name, description, slug, skill_md_path, created_at, updated_at;
+                        """,
+                        (name, description, slug),
+                    )
+                    row = cur.fetchone()
+                    break
+                except psycopg2.Error:
+                    conn.rollback()
+                    if attempt == 1:
+                        raise
+                    suffix = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+                    slug = f"{base_slug}-{suffix}"
+            if row is None:
+                raise HTTPException(status_code=500, detail="Failed to create skill")
+            cur.execute(
+                """
+                INSERT INTO skill_conversations (skill_id)
+                VALUES (%s);
+                """,
+                (row["id"],),
+            )
+        conn.commit()
+    return Skill(**row)
+
+
+@app.delete("/skills/{skill_id}", status_code=204)
+def delete_skill(skill_id: int) -> None:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = _get_skill(cur, skill_id)
+            cur.execute("DELETE FROM skills WHERE id = %s;", (skill_id,))
+        conn.commit()
+
+    raw_path = (skill.get("skill_md_path") or "").strip()
+    if not raw_path:
+        return
+
+    try:
+        skill_md = Path(raw_path).resolve()
+        if skill_md.exists() and skill_md.is_file():
+            skill_md.unlink()
+        skill_dir = skill_md.parent
+        if skill_dir.exists() and skill_dir.is_dir():
+            shutil.rmtree(skill_dir, ignore_errors=True)
+    except Exception:
+        # DB delete already succeeded; filesystem cleanup is best-effort.
+        pass
+
+
+@app.get("/skills/{skill_id}/conversations", response_model=list[SkillConversation])
+def list_skill_conversations(skill_id: int) -> list[SkillConversation]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _get_skill(cur, skill_id)
+            cur.execute(
+                """
+                SELECT id, skill_id, created_at
+                FROM skill_conversations
+                WHERE skill_id = %s
+                ORDER BY id DESC;
+                """,
+                (skill_id,),
+            )
+            rows = cur.fetchall()
+    return [SkillConversation(**row) for row in rows]
+
+
+@app.post("/skills/{skill_id}/conversations", response_model=SkillConversation, status_code=201)
+def create_skill_conversation(skill_id: int) -> SkillConversation:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _get_skill(cur, skill_id)
+            cur.execute(
+                """
+                INSERT INTO skill_conversations (skill_id)
+                VALUES (%s)
+                RETURNING id, skill_id, created_at;
+                """,
+                (skill_id,),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return SkillConversation(**row)
+
+
+@app.get("/skill-conversations/{skill_conversation_id}/messages", response_model=list[SkillMessage])
+def list_skill_conversation_messages(skill_conversation_id: int) -> list[SkillMessage]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            convo = _get_skill_conversation(cur, skill_conversation_id)
+            cur.execute(
+                """
+                SELECT id, %s AS skill_id, skill_conversation_id, role, content, created_at
+                FROM skill_messages
+                WHERE skill_conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (convo["skill_id"], skill_conversation_id),
+            )
+            rows = cur.fetchall()
+    return [SkillMessage(**row) for row in rows]
+
+
+@app.post("/skill-conversations/{skill_conversation_id}/messages", status_code=201)
+async def create_skill_conversation_message(skill_conversation_id: int, payload: CreateMessageRequest):
+    user_content = payload.content.strip()
+    if not user_content:
+        raise HTTPException(status_code=400, detail="Message content is required")
+
+    skill_id, history_rows = _load_skill_conversation_history(skill_conversation_id)
+    try:
+        skill_chat_agent = build_skill_chat_agent()
+        agent_input = _build_skill_chat_input(history_rows, user_content)
+        result = await Runner.run(skill_chat_agent, agent_input)
+        assistant_content = str(result.final_output)
+    except Exception:
+        assistant_content = "I could not process this right now. Please try again."
+
+    user_message, assistant_message = _persist_skill_message_pair(
+        skill_conversation_id=skill_conversation_id,
+        skill_id=skill_id,
+        user_content=user_content,
+        assistant_content=assistant_content,
+    )
+    return {"messages": [user_message, assistant_message]}
+
+
+@app.post("/skills/{skill_id}/publish", response_model=Skill, status_code=200)
+async def publish_skill(skill_id: int, payload: PublishSkillRequest) -> Skill:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = _get_skill(cur, skill_id)
+            skill_conversation_id = payload.skill_conversation_id
+            if skill_conversation_id is None:
+                cur.execute(
+                    """
+                    SELECT id, skill_id, created_at
+                    FROM skill_conversations
+                    WHERE skill_id = %s
+                    ORDER BY id DESC
+                    LIMIT 1;
+                    """,
+                    (skill_id,),
+                )
+                row = cur.fetchone()
+                if row is None:
+                    raise HTTPException(status_code=400, detail="No skill conversation found to publish")
+                skill_conversation_id = row["id"]
+            convo = _get_skill_conversation(cur, skill_conversation_id)
+            if convo["skill_id"] != skill_id:
+                raise HTTPException(status_code=400, detail="Conversation does not belong to skill")
+
+            cur.execute(
+                """
+                SELECT role, content
+                FROM skill_messages
+                WHERE skill_conversation_id = %s
+                ORDER BY id ASC;
+                """,
+                (skill_conversation_id,),
+            )
+            messages = cur.fetchall()
+
+    history = "\n".join(f"{m['role']}: {m['content']}" for m in messages)
+    publish_prompt = (
+        f"Create/update a skill called '{skill['name']}'.\n"
+        f"Current description: {skill['description']}\n"
+        "Use this conversation to define the skill:\n"
+        f"{history}"
+    )
+
+    try:
+        skill_agent = build_skill_agent()
+        result = await Runner.run(skill_agent, publish_prompt)
+        parsed = _parse_skill_agent_output(str(result.final_output))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate skill markdown: {exc}") from exc
+
+    if not parsed["skill_name"] or not parsed["description"] or not parsed["skill_markdown"]:
+        raise HTTPException(status_code=500, detail="Skill generation returned incomplete output")
+
+    created = create_skill_from_agent_output(
+        skill_name=parsed["skill_name"],
+        description=parsed["description"],
+        skill_markdown=parsed["skill_markdown"],
+    )
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                UPDATE skills
+                SET name = %s,
+                    description = %s,
+                    slug = %s,
+                    skill_md_path = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, name, description, slug, skill_md_path, created_at, updated_at;
+                """,
+                (
+                    parsed["skill_name"],
+                    parsed["description"],
+                    slugify(parsed["skill_name"]),
+                    created["skill_md_path"],
+                    skill_id,
+                ),
+            )
+            updated = cur.fetchone()
+        conn.commit()
+    return Skill(**updated)
+
+
 @app.get("/agent/skills", response_model=list[SkillSummary])
 def list_agent_skills() -> list[SkillSummary]:
+    # Backward-compatible endpoint for existing UI consumers.
     return [SkillSummary(**item) for item in list_existing_skills()]
 
 
@@ -360,10 +765,6 @@ if __name__ == "__main__":
     from fastapi.testclient import TestClient
 
     with TestClient(app) as client:
-
-        response = client.post("/reports/50/messages", json={
-            "report_id": 50,
-            "payload": {"content": "Can you answer questions about total sales by product category for january 2017?"},
-        })
+        response = client.get("/health")
         print(response.status_code)
         print(response.json())

@@ -134,12 +134,21 @@ Backend (`:8000`):
 - `GET /health`
 - `GET /reports`
 - `POST /reports`
-- `GET /reports/{report_id}/messages`
-- `POST /reports/{report_id}/messages`
+- `GET /reports/{report_id}/conversations`
+- `POST /reports/{report_id}/conversations`
+- `GET /conversations/{conversation_id}/messages`
+- `POST /conversations/{conversation_id}/messages`
 - `GET /reports/{report_id}/markdown`
 - `GET /reports/{report_id}/files/{file_path}`
 - `POST /agent/teach` (creates a learned skill from UI text)
-- `GET /agent/skills` (lists existing learned skills)
+- `GET /skills`
+- `POST /skills`
+- `GET /skills/{skill_id}/conversations`
+- `POST /skills/{skill_id}/conversations`
+- `GET /skill-conversations/{skill_conversation_id}/messages`
+- `POST /skill-conversations/{skill_conversation_id}/messages`
+- `POST /skills/{skill_id}/publish`
+- `GET /agent/skills` (legacy compatibility endpoint)
 
 Worker (`:5000`):
 
