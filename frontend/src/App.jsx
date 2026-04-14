@@ -117,7 +117,6 @@ export default function App() {
 
       <TeachAgentModal
         open={skill.teachModalOpen}
-        teachMode={skill.teachMode}
         skills={skill.skills}
         skillsLoading={skill.skillsLoading}
         activeSkillId={skill.activeSkillId}
@@ -132,7 +131,6 @@ export default function App() {
         publishLoading={skill.publishLoading}
         teachStatus={skill.teachStatus}
         onClose={() => skill.setTeachModalOpen(false)}
-        onSetTeachMode={skill.setTeachMode}
         onSelectSkill={skill.setActiveSkillId}
         onCreateSkill={skill.createSkill}
         onDeleteSkill={skill.deleteSkill}

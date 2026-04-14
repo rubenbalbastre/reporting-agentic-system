@@ -6,7 +6,6 @@ export function useSkillTeaching() {
   const [teachInput, setTeachInput] = useState("");
   const [teachStatus, setTeachStatus] = useState(null);
   const [teachLoading, setTeachLoading] = useState(false);
-  const [teachMode, setTeachMode] = useState(null);
 
   const [skills, setSkills] = useState([]);
   const [skillsLoading, setSkillsLoading] = useState(false);
@@ -22,7 +21,6 @@ export function useSkillTeaching() {
 
   useEffect(() => {
     if (!teachModalOpen) {
-      setTeachMode(null);
       setActiveSkillId(null);
       setActiveSkillConversationId(null);
       setSkillMessages([]);
@@ -72,7 +70,6 @@ export function useSkillTeaching() {
         return;
       }
       setTeachStatus({ type: "success", text: `Created skill ${data.name}` });
-      setTeachMode("explore");
       await loadSkills();
       setActiveSkillId(data.id);
       const convs = await loadSkillConversations(data.id);
@@ -215,8 +212,6 @@ export function useSkillTeaching() {
     setTeachInput,
     teachStatus,
     teachLoading,
-    teachMode,
-    setTeachMode,
     skills,
     skillsLoading,
     createSkillLoading,
