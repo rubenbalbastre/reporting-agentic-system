@@ -75,7 +75,7 @@ export default function TeachAgentModal({
         <div className="teach-chat-box">
           {skillMessages.map((msg) => (
             <div key={msg.id} className={`message ${msg.role}`}>
-              <strong>{msg.role}:</strong> <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
             </div>
           ))}
         </div>

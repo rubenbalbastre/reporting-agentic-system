@@ -51,7 +51,6 @@ export default function ReportChatPanel({
       <div className="panel-content chat-messages">
         {messages.map((msg) => (
           <div key={msg.id} className={`message ${msg.role}`}>
-            <strong>{msg.role}:</strong>{" "}
             {msg.status === "pending" ? (
               "Thinking..."
             ) : (

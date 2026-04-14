@@ -288,6 +288,8 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .message {
@@ -296,6 +298,7 @@ h2 {
   padding: 10px 12px;
   color: var(--subtext);
   background: rgba(255, 255, 255, 0.78);
+  max-width: 82%;
 }
 
 .modal-backdrop {
@@ -479,7 +482,8 @@ h2 {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  padding-right: 4px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .btn-create-skill {
@@ -590,10 +594,15 @@ h2 {
 .message.user {
   border-color: rgba(0, 113, 227, 0.2);
   background: rgba(0, 113, 227, 0.08);
+  align-self: flex-end;
+  margin-left: auto;
 }
 
 .message.assistant {
   border-color: rgba(17, 24, 39, 0.12);
+  background: rgba(255, 255, 255, 0.92);
+  align-self: flex-start;
+  margin-right: auto;
 }
 
 .chat-input {
