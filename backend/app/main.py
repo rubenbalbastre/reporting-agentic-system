@@ -339,6 +339,24 @@ def create_report(payload: CreateReportRequest) -> Report:
     return report
 
 
+@app.delete("/reports/{report_id}", status_code=204)
+def delete_report(report_id: int) -> None:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+            cur.execute("DELETE FROM reports WHERE id = %s;", (report_id,))
+        conn.commit()
+
+    try:
+        workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs")).resolve()
+        report_workspace = (workspace_root / f"report_{report_id}").resolve()
+        if report_workspace.exists() and report_workspace.is_dir():
+            shutil.rmtree(report_workspace, ignore_errors=True)
+    except Exception:
+        # DB delete already succeeded; workspace cleanup is best-effort.
+        pass
+
+
 @app.get("/reports/{report_id}/conversations")
 def list_conversations(report_id: int) -> List[Conversation]:
     with get_db_connection() as conn:

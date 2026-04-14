@@ -43,7 +43,22 @@ export default function App() {
           <aside className="sidebar">
             <div className="sidebar-head">
               <h2>Reports</h2>
-              <button onClick={report.createReport}>New Report</button>
+              <div className="sidebar-actions">
+                <button onClick={report.createReport}>New Report</button>
+                <button
+                  className="btn-delete-report icon-danger-btn"
+                  onClick={() => {
+                    if (!report.activeReportId) return;
+                    const confirmed = window.confirm("Delete this report and all its conversations?");
+                    if (confirmed) report.deleteReport();
+                  }}
+                  disabled={!report.activeReportId || report.deleteReportLoading}
+                  title={report.deleteReportLoading ? "Deleting report..." : "Delete report"}
+                  aria-label={report.deleteReportLoading ? "Deleting report" : "Delete report"}
+                >
+                  {report.deleteReportLoading ? "…" : "🗑"}
+                </button>
+              </div>
             </div>
             <ul>
               {report.reports.map((r) => (

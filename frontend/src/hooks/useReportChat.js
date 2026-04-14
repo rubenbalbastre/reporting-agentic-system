@@ -17,6 +17,7 @@ export function useReportChat() {
   const [markdown, setMarkdown] = useState("# Select or create a report");
   const [sidebarVisible, setSidebarVisible] = useState(true);
   const [viewMode, setViewMode] = useState(VIEW.ORIGINAL);
+  const [deleteReportLoading, setDeleteReportLoading] = useState(false);
 
   useEffect(() => {
     loadReports();
@@ -99,6 +100,34 @@ export function useReportChat() {
     setActiveConversationId(data.id);
   }
 
+  async function deleteReport() {
+    if (!activeReportId || deleteReportLoading) return;
+    setDeleteReportLoading(true);
+    try {
+      const deletingId = activeReportId;
+      const { ok } = await api.del(`/reports/${deletingId}`);
+      if (!ok) {
+        alert("Failed to delete report");
+        return;
+      }
+      const { ok: okReports, data } = await api.get("/reports");
+      const list = okReports && Array.isArray(data) ? data : [];
+      setReports(list);
+      if (!list.length) {
+        setActiveReportId(null);
+        setConversations([]);
+        setActiveConversationId(null);
+        setMessages([]);
+        setMarkdown("# Select or create a report");
+        return;
+      }
+      const next = list.find((r) => r.id !== deletingId) || list[0];
+      setActiveReportId(next.id);
+    } finally {
+      setDeleteReportLoading(false);
+    }
+  }
+
   async function sendMessage() {
     if (!activeConversationId || !input.trim()) return;
     const content = input.trim();
@@ -144,6 +173,8 @@ export function useReportChat() {
     viewMode,
     setViewMode,
     createReport,
+    deleteReport,
+    deleteReportLoading,
     createConversation,
     sendMessage,
     layoutClassName,
