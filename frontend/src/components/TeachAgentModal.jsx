@@ -34,6 +34,7 @@ export default function TeachAgentModal({
   const isExploreMode = teachMode === "explore";
   const isSkillEditingView = isExploreMode && !!activeSkillId;
   const showExploreSidebar = isSkillEditingView && !skillsSidebarHidden;
+  const activeSkill = skills.find((skill) => skill.id === activeSkillId) || null;
 
   useEffect(() => {
     if (!isSkillEditingView) {
@@ -110,7 +111,14 @@ export default function TeachAgentModal({
         aria-label="Teach the Agent"
       >
         <div className="panel-head">
-          <h2>Teach the Agent</h2>
+          <h2>
+            Teach the Agent
+            {isSkillEditingView && activeSkill ? (
+              <>
+                : <span className="teach-title-skill">Skill {activeSkill.name}</span>
+              </>
+            ) : null}
+          </h2>
           <div className="teach-header-actions">
             {isSkillEditingView && (
               <button onClick={() => setSkillsSidebarHidden((v) => !v)}>
