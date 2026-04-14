@@ -11,6 +11,13 @@
   box-sizing: border-box;
 }
 
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
 body {
   margin: 0;
   color: var(--text);
@@ -23,8 +30,12 @@ body {
 }
 
 .app-shell {
-  min-height: 100vh;
+  height: 100vh;
   padding: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 .topbar {
@@ -117,7 +128,9 @@ button:hover {
 .layout {
   display: grid;
   gap: 12px;
-  min-height: calc(100vh - 102px);
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .layout.with-sidebar.two-panels {
@@ -319,6 +332,7 @@ h2 {
   flex-direction: column;
   gap: 12px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .teach-mode-grid {
@@ -439,6 +453,7 @@ h2 {
 
 .teach-explore-main {
   min-height: 0;
+  overflow: hidden;
 }
 
 .teach-actions select {
@@ -500,6 +515,7 @@ h2 {
   flex-direction: column;
   gap: 10px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .skill-workspace {
@@ -507,6 +523,7 @@ h2 {
   grid-template-columns: 1fr 1fr;
   gap: 12px;
   min-height: 0;
+  overflow: hidden;
 }
 
 .skill-markdown-panel {
@@ -586,7 +603,6 @@ h2 {
 @media (max-width: 1080px) {
   .layout {
     grid-template-columns: 1fr;
-    min-height: auto;
   }
 
   .skill-workspace {
