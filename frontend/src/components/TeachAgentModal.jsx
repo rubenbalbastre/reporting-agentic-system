@@ -42,6 +42,11 @@ export default function TeachAgentModal({
     }
   }, [isSkillEditingView]);
 
+  function handleCreateSkillClick() {
+    setSkillsSidebarHidden(true);
+    onCreateSkill();
+  }
+
   const skillWorkspace = activeSkillId ? (
     <div className="skill-workspace">
       <div className="skill-markdown-panel">
@@ -163,7 +168,7 @@ export default function TeachAgentModal({
               </button>
               <button
                 className={`teach-mode-btn teach-mode-create icon-action-btn ${teachMode === "create" ? "active" : ""}`}
-                onClick={onCreateSkill}
+                onClick={handleCreateSkillClick}
                 disabled={createSkillLoading}
                 title={createSkillLoading ? "Creating skill..." : "Create new skill"}
                 aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}

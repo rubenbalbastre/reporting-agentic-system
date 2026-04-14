@@ -317,8 +317,8 @@ h2 {
 }
 
 .teach-modal {
-  width: min(1280px, 96vw);
-  max-height: calc(100vh - 20px);
+  width: 96vw;
+  height: 94vh;
   overflow: hidden;
   border-radius: 20px;
   border: 1px solid var(--line);
