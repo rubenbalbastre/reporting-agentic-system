@@ -1,5 +1,5 @@
 from agents import Agent
-from app.prompts import build_skill_agent_instructions, build_skill_chat_agent_instructions
+from app.agents.prompts import build_skill_agent_instructions, build_skill_chat_agent_instructions
 
 
 def build_skill_agent() -> Agent:
