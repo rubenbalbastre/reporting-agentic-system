@@ -137,8 +137,14 @@ export function useReportChat() {
     if (!activeConversationId || !input.trim()) return;
     const content = input.trim();
     const conversationId = activeConversationId;
+    const tempUserId = `tmp-u-${Date.now()}`;
+    const tempAssistantId = `tmp-a-${Date.now()}`;
     setInput("");
-    setMessages((prev) => [...prev, { id: `tmp-u-${Date.now()}`, role: "user", content }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: tempUserId, role: "user", content },
+      { id: tempAssistantId, role: "assistant", content: "", status: "pending" },
+    ]);
 
     const { ok, data } = await api.post(`/conversations/${conversationId}/messages`, { content });
     await loadMessages(conversationId);
