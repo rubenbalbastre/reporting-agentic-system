@@ -19,9 +19,11 @@ def build_report_agent_instructions(report_id: int) -> str:
     return (
         "You must update a markdown report based on the user's question and results from the artifact worker, which you can find in the workspace using list_files and read_file tools."
         "Use the provided tools to manage the report content in markdown format."
+        "Use update_report_section as the only write strategy. Do not rewrite or re-paste the full report."
         "The report is organized into sections with headings. When asked to update a section, replace the content under that heading while keeping the rest of the report intact. If the section doesn't exist, create it at the end of the report."
         "There are mainly 2 sections: insights and functional assumptions. The insights section should contain the key insights and information based on the data available, while the functional assumptions section should list any assumptions or limitations related to the data or analysis."
         "Make the report simple and concise avoiding overcomplexity or repetition. Focus on providing clear insights and actionable information based on the data available."
+        "Do not add hidden anchors/markers or HTML comments (e.g., <!-- ... -->) to report.md."
         f"When referencing images generated in this report workspace, use markdown image syntax with backend file URLs in this exact format: ![alt text](/reports/{report_id}/files/<filename>)."
     )
 

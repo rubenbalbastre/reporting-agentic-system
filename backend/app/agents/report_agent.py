@@ -65,6 +65,10 @@ def build_report_agent(report_id: int) -> Agent:
         label = display_path or str(file_path.relative_to(workspace))
         return f"path={label} file_id={uploaded.id} mime={mime_type or 'application/octet-stream'}"
 
+    def _strip_html_comments(text: str) -> str:
+        # Keep report markdown clean: remove hidden anchors like <!-- ... -->
+        return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
+
     @function_tool
     def read_file(path: str) -> str:
         """Read a text file from the workspace."""
@@ -135,15 +139,6 @@ def build_report_agent(report_id: int) -> Agent:
         )
     
     @function_tool
-    def update_full_report(content: str) -> str:
-        """
-        Update the full markdown content of a report.
-        """
-        path = get_report_markdown_path(report_id)
-        path.write_text(content, encoding="utf-8")
-        return f"Report '{report_id}' updated."
-
-    @function_tool
     def update_report_section(heading: str, content: str) -> str:
         """
         Replace or create a section in the markdown report. Use only top-level or second-level headings (e.g., "# Summary" or "## Results") to identify sections. The
@@ -153,41 +148,76 @@ def build_report_agent(report_id: int) -> Agent:
         path = get_report_markdown_path(report_id)
         text = path.read_text(encoding="utf-8")
         lines = text.splitlines()
+        match = re.match(r"^(#{1,6})\s*(.+?)\s*$", heading.strip())
+        if not match:
+            return "ERROR: heading must be markdown heading format like '# Title' or '## Title'"
+        target_marks = match.group(1)
+        target_title = match.group(2).strip()
+        target_norm = target_title.lower()
+        canonical_heading = f"{target_marks} {target_title}"
+        sanitized_content = _strip_html_comments(content).strip()
 
-        new_lines = []
-        in_target_section = False
-        section_found = False
-
-        for i, line in enumerate(lines):
-            if line.strip() == heading:
-                # Start replacing this section
-                section_found = True
-                in_target_section = True
-                new_lines.append(heading)
-                new_lines.append(content)
+        # Capture markdown heading sections as [start, end) ranges.
+        sections: list[tuple[int, int, str, str]] = []
+        for idx, line in enumerate(lines):
+            h = re.match(r"^(#{1,6})\s+(.+?)\s*$", line)
+            if not h:
                 continue
+            sections.append((idx, len(target_marks), h.group(2).strip(), line))
 
-            # Detect next section (another heading)
-            if in_target_section and line.startswith("#"):
-                in_target_section = False
+        ranges: list[tuple[int, int]] = []
+        for i, (start, _level, title, _raw) in enumerate(sections):
+            title_norm = title.lower()
+            if title_norm != target_norm:
+                continue
+            end = sections[i + 1][0] if i + 1 < len(sections) else len(lines)
+            ranges.append((start, end))
 
-            if not in_target_section:
-                new_lines.append(line)
+        if not ranges:
+            new_lines = list(lines)
+            if new_lines and new_lines[-1].strip():
+                new_lines.append("")
+            new_lines.append(canonical_heading)
+            new_lines.append(sanitized_content)
+            updated_text = "\n".join(new_lines).rstrip() + "\n"
+            updated_text = _strip_html_comments(updated_text).rstrip() + "\n"
+            path.write_text(updated_text, encoding="utf-8")
+            return f"Section '{canonical_heading}' created in report '{report_id}'"
 
-        # If section not found → append it
-        if not section_found:
-            new_lines.append("")  # spacing
-            new_lines.append(heading)
-            new_lines.append(content)
+        first_start, first_end = ranges[0]
+        skip_ranges = ranges[1:]
+        new_lines: list[str] = []
+        idx = 0
+        while idx < len(lines):
+            # Replace first matched section once.
+            if idx == first_start:
+                new_lines.append(canonical_heading)
+                new_lines.append(sanitized_content)
+                idx = first_end
+                continue
+            # Drop duplicate matching sections.
+            skipped = False
+            for s, e in skip_ranges:
+                if idx == s:
+                    idx = e
+                    skipped = True
+                    break
+            if skipped:
+                continue
+            new_lines.append(lines[idx])
+            idx += 1
 
-        updated_text = "\n".join(new_lines) + "\n"
+        updated_text = _strip_html_comments("\n".join(new_lines)).rstrip() + "\n"
         path.write_text(updated_text, encoding="utf-8")
-
-        return f"Section '{heading}' updated in report '{report_id}'"
+        removed = max(0, len(ranges) - 1)
+        return (
+            f"Section '{canonical_heading}' updated in report '{report_id}'. "
+            f"Removed {removed} duplicate section(s)."
+        )
 
     return Agent(
         name="report_agent",
         instructions=build_report_agent_instructions(report_id),
         model="gpt-5.4-nano",
-        tools=[read_report, list_files, read_file, update_full_report, update_report_section],
+        tools=[read_report, list_files, read_file, update_report_section],
     )
