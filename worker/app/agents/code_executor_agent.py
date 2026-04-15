@@ -13,11 +13,39 @@ from app.agents.database_agent import (
 from app.agents.instructions import load_agent_notes
 from app.agents.prompts import build_code_executor_instructions
 from app.utils.shared_skills import search_shared_skills, read_shared_skill
-
+from pydantic import BaseModel, Field
+from typing import List, Optional, Literal
 
 # -------------------------------------------------------------------
 # Agent
 # -------------------------------------------------------------------
+
+
+class CodeAgentResult(BaseModel):
+    status: Literal["needs_more_info", "ready_to_execute"]
+    missing_information: List[str] = Field(default_factory=list)
+    clarification_question: Optional[str] = None
+    summary: str
+
+
+@function_tool
+def think_plan(plan: str) -> str:
+    """
+    Create a high-level plan for writing a Python script that answers the user's question.
+    Your plan should break down the problem into smaller steps, identify what functions or classes to create, and outline the logic flow.
+
+    
+    "Do not ask the user for additional data before checking the database first. "
+    "Only request extra data if, after database inspection, required information is truly missing."
+    "Database policy: this app uses PostgreSQL. Never propose SQLite or local .db files. "
+    "Use DATABASE_URL and PostgreSQL-compatible SQL/datatypes."
+    "Notes:\n"
+    "* Do not send instruction on checking requirements or installing dependencies. Assume all necessary libraries are available."
+    "* Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
+    "* It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
+    + ("\n\nAdditional notes:\n" + additional_instructions if additional_instructions else "")
+    """
+    return plan
 
 
 def build_code_executor_agent(workspace_dir: str) -> Agent:
@@ -214,6 +242,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
             preview_table,
             search_agent_skills,
             read_agent_skill,
-        ]
+        ],
+        output_type=CodeAgentResult,
     )
     return code_agent
