@@ -15,6 +15,7 @@ def build_report_agent(report_id: int) -> Agent:
     workspace = get_report_workspace(report_id)
     report_files_prefixes = (f"/reports/{report_id}/files/", f"/reports/{report_id}/")
     image_ref_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+    heading_pattern = re.compile(r"^(#{1,6})\s+(.+?)\s*$")
     client = OpenAI()
 
     def _is_probably_text(file_path: Path) -> bool:
@@ -94,6 +95,32 @@ def build_report_agent(report_id: int) -> Agent:
         return file_path.read_text(encoding="utf-8")
 
     @function_tool
+    def replace_in_file(path: str, old_text: str, new_text: str, replace_all: bool = False) -> str:
+        """Replace text in a workspace file. Errors if old_text is not found."""
+        if not old_text:
+            return "ERROR: old_text must be non-empty"
+        file_path = safe_path(path)
+        if not file_path.exists() or not file_path.is_file():
+            return f"ERROR: {path} does not exist"
+        if not _is_probably_text(file_path):
+            return f"ERROR: {path} is not a text file"
+
+        original = file_path.read_text(encoding="utf-8")
+        if old_text not in original:
+            return f"ERROR: old_text not found in {path}"
+
+        count = original.count(old_text)
+        if replace_all:
+            updated = original.replace(old_text, new_text)
+            replaced = count
+        else:
+            updated = original.replace(old_text, new_text, 1)
+            replaced = 1
+
+        file_path.write_text(updated, encoding="utf-8")
+        return f"Replaced {replaced} occurrence(s) in {path}"
+
+    @function_tool
     def list_files(path: str = ".") -> str:
         """List files recursively inside a workspace directory."""
         dir_path = safe_path(path)
@@ -139,85 +166,81 @@ def build_report_agent(report_id: int) -> Agent:
         )
     
     @function_tool
-    def update_report_section(heading: str, content: str) -> str:
+    def update_report(content: str) -> str:
         """
-        Replace or create a section in the markdown report. Use only top-level or second-level headings (e.g., "# Summary" or "## Results") to identify sections. The
-
-        heading must match exactly (e.g., "## Results").
+        Rewrite the full markdown report content.
         """
         path = get_report_markdown_path(report_id)
-        text = path.read_text(encoding="utf-8")
-        lines = text.splitlines()
-        match = re.match(r"^(#{1,6})\s*(.+?)\s*$", heading.strip())
-        if not match:
-            return "ERROR: heading must be markdown heading format like '# Title' or '## Title'"
-        target_marks = match.group(1)
-        target_title = match.group(2).strip()
-        target_norm = target_title.lower()
-        canonical_heading = f"{target_marks} {target_title}"
-        sanitized_content = _strip_html_comments(content).strip()
+        sanitized = _strip_html_comments(content or "").rstrip()
+        if not sanitized:
+            return "ERROR: content is required"
+        path.write_text(sanitized + "\n", encoding="utf-8")
+        return "Report updated"
 
-        # Capture markdown heading sections as [start, end) ranges.
-        sections: list[tuple[int, int, str, str]] = []
-        for idx, line in enumerate(lines):
-            h = re.match(r"^(#{1,6})\s+(.+?)\s*$", line)
+    @function_tool
+    def update_report_section(heading: str, content: str) -> str:
+        """
+        Replace or create a single section in the markdown report.
+        Provide `heading` (e.g., "## Insights") and `content`.
+        """
+        if not (heading or "").strip():
+            return "ERROR: heading is required. Use update_report to rewrite the full report."
+        m = re.match(r"^(#{1,6})\s*(.+?)\s*$", heading.strip())
+        if not m:
+            return "ERROR: heading must be markdown heading format like '# Title' or '## Title'"
+
+        path = get_report_markdown_path(report_id)
+        lines = path.read_text(encoding="utf-8").splitlines()
+        canonical_heading = f"{m.group(1)} {m.group(2).strip()}"
+        target_key = canonical_heading.lower()
+        section_body = _strip_html_comments(content or "").strip()
+
+        sections: list[tuple[int, int]] = []
+        for i, line in enumerate(lines):
+            h = heading_pattern.match(line.strip())
             if not h:
                 continue
-            sections.append((idx, len(target_marks), h.group(2).strip(), line))
-
-        ranges: list[tuple[int, int]] = []
-        for i, (start, _level, title, _raw) in enumerate(sections):
-            title_norm = title.lower()
-            if title_norm != target_norm:
+            key = f"{h.group(1)} {h.group(2).strip()}".lower()
+            if key != target_key:
                 continue
-            end = sections[i + 1][0] if i + 1 < len(sections) else len(lines)
-            ranges.append((start, end))
+            # Capture the full section span: heading line until the next heading (or EOF).
+            end = i + 1
+            while end < len(lines) and not heading_pattern.match(lines[end].strip()):
+                end += 1
+            sections.append((i, end))
 
-        if not ranges:
-            new_lines = list(lines)
-            if new_lines and new_lines[-1].strip():
-                new_lines.append("")
-            new_lines.append(canonical_heading)
-            new_lines.append(sanitized_content)
-            updated_text = "\n".join(new_lines).rstrip() + "\n"
-            updated_text = _strip_html_comments(updated_text).rstrip() + "\n"
-            path.write_text(updated_text, encoding="utf-8")
-            return f"Section '{canonical_heading}' created in report '{report_id}'"
+        if not sections:
+            # If the section does not exist, append it at the end of the report.
+            if lines and lines[-1].strip():
+                lines.append("")
+            lines.extend([canonical_heading, section_body])
+            path.write_text(_strip_html_comments("\n".join(lines)).rstrip() + "\n", encoding="utf-8")
+            return f"Section '{canonical_heading}' created"
 
-        first_start, first_end = ranges[0]
-        skip_ranges = ranges[1:]
+        first_start, first_end = sections[0]
         new_lines: list[str] = []
-        idx = 0
-        while idx < len(lines):
-            # Replace first matched section once.
-            if idx == first_start:
-                new_lines.append(canonical_heading)
-                new_lines.append(sanitized_content)
-                idx = first_end
+        i = 0
+        while i < len(lines):
+            if i == first_start:
+                # Replace only the first matching section with the new content.
+                new_lines.extend([canonical_heading, section_body])
+                i = first_end
                 continue
-            # Drop duplicate matching sections.
-            skipped = False
-            for s, e in skip_ranges:
-                if idx == s:
-                    idx = e
-                    skipped = True
-                    break
-            if skipped:
+            duplicate = next((end for start, end in sections[1:] if i == start), None)
+            if duplicate is not None:
+                # Drop additional duplicate sections with the same heading.
+                i = duplicate
                 continue
-            new_lines.append(lines[idx])
-            idx += 1
+            new_lines.append(lines[i])
+            i += 1
 
-        updated_text = _strip_html_comments("\n".join(new_lines)).rstrip() + "\n"
-        path.write_text(updated_text, encoding="utf-8")
-        removed = max(0, len(ranges) - 1)
-        return (
-            f"Section '{canonical_heading}' updated in report '{report_id}'. "
-            f"Removed {removed} duplicate section(s)."
-        )
+        path.write_text(_strip_html_comments("\n".join(new_lines)).rstrip() + "\n", encoding="utf-8")
+        removed = max(0, len(sections) - 1)
+        return f"Section '{canonical_heading}' updated. Removed {removed} duplicate(s)."
 
     return Agent(
         name="report_agent",
         instructions=build_report_agent_instructions(report_id),
         model="gpt-5.4-nano",
-        tools=[read_report, list_files, read_file, update_report_section],
+        tools=[read_report, list_files, read_file, replace_in_file, update_report, update_report_section],
     )
