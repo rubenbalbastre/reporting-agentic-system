@@ -1,5 +1,7 @@
 from agents import function_tool, Agent
+import mimetypes
 from pathlib import Path
+from openai import OpenAI
 from app.utils.workspace_paths import (
     get_report_workspace,
     get_report_markdown_path,
@@ -11,6 +13,18 @@ from app.agents.prompts import build_report_agent_instructions
 def build_report_agent(report_id: int) -> Agent:
     workspace = get_report_workspace(report_id)
 
+    def _is_probably_text(file_path: Path) -> bool:
+        try:
+            sample = file_path.read_bytes()[:4096]
+        except Exception:
+            return False
+        if b"\x00" in sample:
+            return False
+        if not sample:
+            return True
+        non_printable = sum(1 for b in sample if b < 9 or (13 < b < 32))
+        return (non_printable / len(sample)) < 0.20
+
     def safe_path(rel_path: str) -> Path:
         return resolve_workspace_relative_path(workspace, rel_path)
 
@@ -18,6 +32,26 @@ def build_report_agent(report_id: int) -> Agent:
     def read_file(path: str) -> str:
         """Read a text file from the workspace."""
         file_path = safe_path(path)
+        if not file_path.exists() or not file_path.is_file():
+            return f"ERROR: {path} does not exist"
+        if not _is_probably_text(file_path):
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if mime_type and mime_type.startswith("image/"):
+                try:
+                    client = OpenAI()
+                    with file_path.open("rb") as fh:
+                        uploaded = client.files.create(file=fh, purpose="assistants")
+                    return (
+                        f"IMAGE_FILE_UPLOADED path={path} file_id={uploaded.id} mime={mime_type}. "
+                        "Use this uploaded image file for visual reasoning."
+                    )
+                except Exception as exc:
+                    return f"ERROR: Failed to upload image {path} to OpenAI files API: {exc}"
+            return (
+                f"ERROR: {path} appears to be a binary file. "
+                "Do not read binary assets (png/jpg/pdf) as text. "
+                "If visual inspection is required, upload the file and reference its file_id."
+            )
         return file_path.read_text(encoding="utf-8")
 
     @function_tool
@@ -99,5 +133,5 @@ def build_report_agent(report_id: int) -> Agent:
         name="report_agent",
         instructions=build_report_agent_instructions(report_id),
         model="gpt-5.4-nano",
-        tools=[read_report, list_files, read_file, update_full_report],
+        tools=[read_report, list_files, read_file, update_full_report, update_report_section],
     )
