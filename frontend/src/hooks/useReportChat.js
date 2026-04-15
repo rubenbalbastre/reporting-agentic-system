@@ -128,6 +128,11 @@ export function useReportChat() {
     }
   }
 
+  function exportReportPdf() {
+    if (!activeReportId) return;
+    window.open(`${api.API_BASE}/reports/${activeReportId}/pdf`, "_blank", "noopener,noreferrer");
+  }
+
   async function sendMessage() {
     if (!activeConversationId || !input.trim()) return;
     const content = input.trim();
@@ -175,6 +180,7 @@ export function useReportChat() {
     createReport,
     deleteReport,
     deleteReportLoading,
+    exportReportPdf,
     createConversation,
     sendMessage,
     layoutClassName,
