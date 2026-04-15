@@ -2,16 +2,15 @@ import subprocess
 from pathlib import Path
 from agents import Agent, function_tool
 
-from app.common_tools import think_tool
-from app.database_agent import (
+from app.agents.database_agent import (
     get_database_schema,
     get_unique_values,
     get_column_stats,
     preview_table
 )
-from app.instructions import load_agent_notes
-from app.prompts import build_code_executor_instructions
-from app.shared_skills import search_shared_skills, read_shared_skill
+from app.agents.instructions import load_agent_notes
+from app.agents.prompts import build_code_executor_instructions
+from app.utils.shared_skills import search_shared_skills, read_shared_skill
 
 
 # -------------------------------------------------------------------
@@ -114,7 +113,6 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
         instructions=build_code_executor_instructions(additional_instructions),
         model="gpt-5.4-nano",
         tools=[
-            # think_tool,
             write_file, read_file, list_files,
             run_python,
             get_database_schema,
