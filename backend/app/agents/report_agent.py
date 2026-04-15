@@ -1,5 +1,6 @@
 from agents import function_tool, Agent
 import mimetypes
+import re
 from pathlib import Path
 from openai import OpenAI
 from app.utils.workspace_paths import (
@@ -12,6 +13,9 @@ from app.agents.prompts import build_report_agent_instructions
 
 def build_report_agent(report_id: int) -> Agent:
     workspace = get_report_workspace(report_id)
+    report_files_prefixes = (f"/reports/{report_id}/files/", f"/reports/{report_id}/")
+    image_ref_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+    client = OpenAI()
 
     def _is_probably_text(file_path: Path) -> bool:
         try:
@@ -28,6 +32,39 @@ def build_report_agent(report_id: int) -> Agent:
     def safe_path(rel_path: str) -> Path:
         return resolve_workspace_relative_path(workspace, rel_path)
 
+    def _resolve_report_image_src(src: str) -> Path | None:
+        raw_src = (src or "").strip().strip("<>").strip()
+        if not raw_src or raw_src.startswith(("http://", "https://", "data:", "blob:")):
+            return None
+
+        rel: str | None = None
+        for prefix in report_files_prefixes:
+            if raw_src.startswith(prefix):
+                rel = raw_src[len(prefix):]
+                break
+        if rel is None and not raw_src.startswith("/"):
+            rel = raw_src.replace("./", "", 1)
+
+        if not rel:
+            return None
+        try:
+            file_path = safe_path(rel)
+        except Exception:
+            return None
+        if not file_path.exists() or not file_path.is_file():
+            return None
+        mime_type, _ = mimetypes.guess_type(str(file_path))
+        if not mime_type or not mime_type.startswith("image/"):
+            return None
+        return file_path
+
+    def _upload_image_for_reasoning(file_path: Path, display_path: str | None = None) -> str:
+        mime_type, _ = mimetypes.guess_type(str(file_path))
+        with file_path.open("rb") as fh:
+            uploaded = client.files.create(file=fh, purpose="assistants")
+        label = display_path or str(file_path.relative_to(workspace))
+        return f"path={label} file_id={uploaded.id} mime={mime_type or 'application/octet-stream'}"
+
     @function_tool
     def read_file(path: str) -> str:
         """Read a text file from the workspace."""
@@ -38,11 +75,9 @@ def build_report_agent(report_id: int) -> Agent:
             mime_type, _ = mimetypes.guess_type(str(file_path))
             if mime_type and mime_type.startswith("image/"):
                 try:
-                    client = OpenAI()
-                    with file_path.open("rb") as fh:
-                        uploaded = client.files.create(file=fh, purpose="assistants")
+                    uploaded_note = _upload_image_for_reasoning(file_path, display_path=path)
                     return (
-                        f"IMAGE_FILE_UPLOADED path={path} file_id={uploaded.id} mime={mime_type}. "
+                        f"IMAGE_FILE_UPLOADED {uploaded_note}. "
                         "Use this uploaded image file for visual reasoning."
                     )
                 except Exception as exc:
@@ -76,7 +111,28 @@ def build_report_agent(report_id: int) -> Agent:
         Retrieve the full markdown content of a report.
         """
         path = get_report_markdown_path(report_id)
-        return path.read_text(encoding="utf-8")
+        markdown_text = path.read_text(encoding="utf-8")
+        image_upload_notes: list[str] = []
+        seen: set[Path] = set()
+
+        for match in image_ref_pattern.finditer(markdown_text):
+            image_path = _resolve_report_image_src(match.group(1))
+            if not image_path or image_path in seen:
+                continue
+            seen.add(image_path)
+            try:
+                image_upload_notes.append(_upload_image_for_reasoning(image_path))
+            except Exception as exc:
+                image_upload_notes.append(f"path={image_path.relative_to(workspace)} upload_error={exc}")
+
+        if not image_upload_notes:
+            return markdown_text
+        return (
+            markdown_text
+            + "\n\n<!-- REPORT_IMAGE_FILES_FOR_REASONING\n"
+            + "\n".join(image_upload_notes)
+            + "\n-->"
+        )
     
     @function_tool
     def update_full_report(content: str) -> str:

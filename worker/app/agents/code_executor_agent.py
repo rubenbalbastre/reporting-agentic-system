@@ -1,6 +1,8 @@
 import subprocess
+import mimetypes
 from pathlib import Path
 from agents import Agent, function_tool
+from openai import OpenAI
 
 from app.agents.database_agent import (
     get_database_schema,
@@ -21,6 +23,26 @@ from app.utils.shared_skills import search_shared_skills, read_shared_skill
 def build_code_executor_agent(workspace_dir: str) -> Agent:
     workspace = Path(workspace_dir).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
+    client = OpenAI()
+
+    def _is_probably_text(file_path: Path) -> bool:
+        try:
+            sample = file_path.read_bytes()[:4096]
+        except Exception:
+            return False
+        if b"\x00" in sample:
+            return False
+        if not sample:
+            return True
+        non_printable = sum(1 for b in sample if b < 9 or (13 < b < 32))
+        return (non_printable / len(sample)) < 0.20
+
+    def _upload_image_for_reasoning(file_path: Path, display_path: str | None = None) -> str:
+        mime_type, _ = mimetypes.guess_type(str(file_path))
+        with file_path.open("rb") as fh:
+            uploaded = client.files.create(file=fh, purpose="assistants")
+        label = display_path or str(file_path.relative_to(workspace))
+        return f"path={label} file_id={uploaded.id} mime={mime_type or 'application/octet-stream'}"
 
     def safe_path(rel_path: str) -> Path:
         raw = Path(rel_path)
@@ -46,6 +68,24 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     def read_file(path: str) -> str:
         """Read a text file from the workspace."""
         file_path = safe_path(path)
+        if not file_path.exists() or not file_path.is_file():
+            return f"ERROR: {path} does not exist"
+        if not _is_probably_text(file_path):
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            if mime_type and mime_type.startswith("image/"):
+                try:
+                    uploaded_note = _upload_image_for_reasoning(file_path, display_path=path)
+                    return (
+                        f"IMAGE_FILE_UPLOADED {uploaded_note}. "
+                        "Use this uploaded image file for visual reasoning."
+                    )
+                except Exception as exc:
+                    return f"ERROR: Failed to upload image {path} to OpenAI files API: {exc}"
+            return (
+                f"ERROR: {path} appears to be a binary file. "
+                "Do not read binary assets (png/jpg/pdf) as text. "
+                "If visual inspection is required, upload the file and reference its file_id."
+            )
         return file_path.read_text(encoding="utf-8")
 
     @function_tool
