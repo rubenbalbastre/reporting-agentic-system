@@ -204,7 +204,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     code_agent = Agent(
         name="code_assistant",
         instructions=build_code_executor_instructions(additional_instructions),
-        model="gpt-5.4-nano",
+        model="gpt-5.4-mini",
         tools=[
             write_file, read_file, replace_in_file, list_files,
             run_python,

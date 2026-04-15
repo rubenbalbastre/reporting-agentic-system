@@ -70,6 +70,33 @@ def build_report_agent(report_id: int) -> Agent:
         # Keep report markdown clean: remove hidden anchors like <!-- ... -->
         return re.sub(r"<!--.*?-->", "", text, flags=re.DOTALL)
 
+    def _to_report_file_url(src: str) -> str:
+        raw_src = (src or "").strip().strip("<>").strip()
+        if not raw_src:
+            return raw_src
+        if raw_src.startswith(("http://", "https://", "data:", "blob:")):
+            return raw_src
+
+        if raw_src.startswith(f"/reports/{report_id}/files/"):
+            return raw_src
+        if raw_src.startswith(f"/reports/{report_id}/"):
+            rel = raw_src[len(f"/reports/{report_id}/"):]
+            return f"/reports/{report_id}/files/{rel}"
+
+        rel = raw_src.replace("./", "", 1).lstrip("/")
+        if not rel:
+            return raw_src
+        return f"/reports/{report_id}/files/{rel}"
+
+    def _normalize_markdown_image_paths(text: str) -> str:
+        def _replace(match: re.Match[str]) -> str:
+            alt = match.group(1)
+            src = match.group(2)
+            normalized = _to_report_file_url(src)
+            return f"![{alt}]({normalized})"
+
+        return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", _replace, text)
+
     @function_tool
     def read_file(path: str) -> str:
         """Read a text file from the workspace."""
@@ -137,6 +164,23 @@ def build_report_agent(report_id: int) -> Agent:
         return "\n".join(items) if items else "(empty)"
 
     @function_tool
+    def build_report_file_url(relative_path: str) -> str:
+        """
+        Build a canonical backend URL for a workspace file:
+        /reports/{report_id}/files/<relative_path>
+        """
+        rel = (relative_path or "").strip().replace("./", "", 1).lstrip("/")
+        if not rel:
+            return "ERROR: relative_path is required"
+        try:
+            file_path = safe_path(rel)
+        except Exception:
+            return "ERROR: invalid path; it must stay inside the report workspace"
+        if not file_path.exists() or not file_path.is_file():
+            return f"ERROR: {rel} does not exist in report workspace"
+        return f"/reports/{report_id}/files/{rel}"
+
+    @function_tool
     def read_report() -> str:
         """
         Retrieve the full markdown content of a report.
@@ -172,6 +216,7 @@ def build_report_agent(report_id: int) -> Agent:
         """
         path = get_report_markdown_path(report_id)
         sanitized = _strip_html_comments(content or "").rstrip()
+        sanitized = _normalize_markdown_image_paths(sanitized)
         if not sanitized:
             return "ERROR: content is required"
         path.write_text(sanitized + "\n", encoding="utf-8")
@@ -193,7 +238,7 @@ def build_report_agent(report_id: int) -> Agent:
         lines = path.read_text(encoding="utf-8").splitlines()
         canonical_heading = f"{m.group(1)} {m.group(2).strip()}"
         target_key = canonical_heading.lower()
-        section_body = _strip_html_comments(content or "").strip()
+        section_body = _normalize_markdown_image_paths(_strip_html_comments(content or "").strip())
 
         sections: list[tuple[int, int]] = []
         for i, line in enumerate(lines):
@@ -241,6 +286,14 @@ def build_report_agent(report_id: int) -> Agent:
     return Agent(
         name="report_agent",
         instructions=build_report_agent_instructions(report_id),
-        model="gpt-5.4-nano",
-        tools=[read_report, list_files, read_file, replace_in_file, update_report, update_report_section],
+        model="gpt-5.4-mini",
+        tools=[
+            read_report,
+            list_files,
+            read_file,
+            replace_in_file,
+            build_report_file_url,
+            update_report,
+            update_report_section,
+        ],
     )

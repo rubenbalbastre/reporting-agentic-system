@@ -39,7 +39,7 @@ def build_report_agent_instructions(report_id: int) -> str:
         "- Your first report editing tool call should be to update_report to save tokens usage."
         "- Make the report simple and concise avoiding overcomplexity or repetition. Focus on providing clear insights and actionable information based on the data available."
         "- Do not add hidden anchors/markers or HTML comments (e.g., <!-- ... -->) to report.md."
-        f"- When referencing images generated in this report workspace, use markdown image syntax with backend file URLs in this exact format: ![alt text](/reports/{report_id}/files/<filename>)."
+        f"- IMPORTANT: When referencing images generated in this report workspace, use markdown image syntax with backend file URLs in this exact format: ![alt text](/reports/{report_id}/files/<filename>)."
     )
 
 

@@ -30,7 +30,7 @@ def build_main_agent(report_id: int) -> Agent:
     agent = Agent(
         name="main_agent",
         instructions=build_main_agent_instructions(),
-        model="gpt-5.4-nano",
+        model="gpt-5.4-mini",
         tools=[
             build_report_agent(report_id=report_id).as_tool(
                 tool_name="report_agent",
