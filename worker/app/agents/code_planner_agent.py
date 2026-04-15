@@ -1,11 +1,11 @@
 from agents import Agent, function_tool
 from pydantic import BaseModel
 
-from app.database_agent import build_database_agent
-from app.common_tools import think_tool
-from app.instructions import load_agent_notes
-from app.prompts import build_code_planner_instructions
-from app.shared_skills import search_shared_skills, read_shared_skill
+from app.agents.database_agent import build_database_agent
+from app.utils.common_tools import think_tool
+from app.agents.instructions import load_agent_notes
+from app.agents.prompts import build_code_planner_instructions
+from app.utils.shared_skills import search_shared_skills, read_shared_skill
 
 
 # -------------------------------------------------------------------
