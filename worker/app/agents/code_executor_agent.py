@@ -73,7 +73,19 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
         """
         file_path = safe_path(entrypoint)
         if not file_path.exists():
-            return f"ERROR: {entrypoint} does not exist"
+            available = sorted(str(p.relative_to(workspace)) for p in workspace.rglob("*.py"))
+            if not available:
+                return (
+                    f"ERROR: {entrypoint} does not exist\n"
+                    "No Python files found in workspace. Create one with write_file first."
+                )
+            return (
+                f"ERROR: {entrypoint} does not exist\n"
+                "Available Python files:\n"
+                + "\n".join(f"- {item}" for item in available)
+            )
+        if not file_path.is_file():
+            return f"ERROR: {entrypoint} is not a file"
 
         result = subprocess.run(
             ["python", str(file_path)],
