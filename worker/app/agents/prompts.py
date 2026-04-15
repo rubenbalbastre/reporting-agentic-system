@@ -24,7 +24,7 @@ def build_code_planner_instructions(additional_instructions: str) -> str:
 
 def build_code_executor_instructions(additional_instructions: str) -> str:
     instructions = """
-You are a code assistant implementing a Python script from a provided plan.
+You are a code assistant implementing a Python code from a provided plan.
 
 Role:
 - Write Python scripts in the workspace, inspect files when needed, and execute them with `run_python`.
