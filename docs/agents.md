@@ -100,3 +100,40 @@ For `POST /conversations/{conversation_id}/messages`:
 - `skill_chat_agent`: `gpt-5.4-nano`
 - `skill_agent`: `gpt-5.4-nano`
 
+## Design Decisions
+
+### Planner + Executor (initial design)
+
+At the beginning, the coding flow was designed with two specialized agents:
+
+- a planner agent
+- an executor agent
+
+The goal was to separate reasoning/planning from implementation/execution.
+
+### What traces showed after one week
+
+After roughly one week of trace analysis, results were not optimal in this project setup:
+
+- repeated tool calls appeared frequently without adding new information
+- context was partially lost between agent handoffs/calls
+- extra round-trips increased latency and token usage
+
+In practice, this produced higher cost and slower responses, with inconsistent quality gains.
+
+### Current decision: unified coding agent
+
+The planner/executor split was replaced with a unified `code_executor_agent`.
+
+This change reduced:
+
+- end-to-end latency
+- token/call overhead (cost)
+
+And it improved task outcomes for this codebase.
+
+### Model-family caveat
+
+These gains are tied to the current GPT-5.4 family behavior.
+
+For older model families, a two-agent split (planner + executor) may still be beneficial depending on task complexity and context-window behavior.
