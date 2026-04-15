@@ -2,15 +2,19 @@ import os
 import mimetypes
 import json
 import shutil
+import re
+import base64
 from datetime import datetime, timezone
 from typing import Any, List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, Response
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from agents import Runner
 from pathlib import Path
+from markdown import markdown
+from playwright.async_api import async_playwright
 from app.schemas import (
     Report,
     Conversation,
@@ -219,6 +223,79 @@ def _read_report_markdown(report_id: int) -> str:
     return report_path.read_text(encoding="utf-8")
 
 
+def _report_markdown_to_html(report_id: int, content: str) -> str:
+    workspace = get_report_workspace(report_id).resolve()
+    html_body = markdown(content, extensions=["tables", "fenced_code", "toc"])
+
+    # Inline backend-served report image URLs as data URIs so Playwright always embeds them in PDF output.
+    # Example: /reports/12/files/chart.png -> data:image/png;base64,...
+    def _replace_src(match: re.Match[str]) -> str:
+        src = match.group(1)
+        prefix = f"/reports/{report_id}/files/"
+        if not src.startswith(prefix):
+            return match.group(0)
+        rel = src[len(prefix):]
+        try:
+            safe_file_path = resolve_workspace_relative_path(workspace, rel)
+            if not safe_file_path.exists() or not safe_file_path.is_file():
+                return match.group(0)
+            mime_type, _ = mimetypes.guess_type(str(safe_file_path))
+            if not mime_type:
+                mime_type = "application/octet-stream"
+            raw = safe_file_path.read_bytes()
+            encoded = base64.b64encode(raw).decode("ascii")
+            return f'src="data:{mime_type};base64,{encoded}"'
+        except Exception:
+            return match.group(0)
+
+    html_body = re.sub(r'src="([^"]+)"', _replace_src, html_body)
+
+    return f"""<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @page {{ size: A4; margin: 18mm; }}
+      body {{
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        color: #111827;
+        line-height: 1.6;
+        font-size: 13px;
+      }}
+      h1, h2, h3 {{ color: #0f172a; line-height: 1.25; }}
+      img {{ max-width: 100%; height: auto; page-break-inside: avoid; }}
+      table {{
+        width: 100%;
+        border-collapse: collapse;
+        margin: 10px 0;
+        font-size: 12px;
+      }}
+      th, td {{
+        border: 1px solid #d1d5db;
+        padding: 6px 8px;
+        vertical-align: top;
+      }}
+      th {{ background: #f3f4f6; }}
+      code {{
+        background: #f3f4f6;
+        padding: 1px 4px;
+        border-radius: 4px;
+      }}
+      pre {{
+        background: #f8fafc;
+        border: 1px solid #e5e7eb;
+        border-radius: 8px;
+        padding: 10px;
+        overflow: auto;
+      }}
+    </style>
+  </head>
+  <body>
+    {html_body}
+  </body>
+</html>"""
+
+
 def _read_skill_markdown(skill: dict[str, Any]) -> str:
     raw_path = (skill.get("skill_md_path") or "").strip()
     if not raw_path:
@@ -419,6 +496,36 @@ def get_report_markdown(report_id: int) -> dict[str, str]:
         with conn.cursor() as cur:
             _ensure_report_exists(cur, report_id)
     return {"content": _read_report_markdown(report_id)}
+
+
+@app.get("/reports/{report_id}/pdf")
+async def export_report_pdf(report_id: int):
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            _ensure_report_exists(cur, report_id)
+
+    markdown_text = _read_report_markdown(report_id)
+    html_content = _report_markdown_to_html(report_id, markdown_text)
+
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page()
+            await page.set_content(html_content, wait_until="networkidle")
+            pdf_bytes = await page.pdf(format="A4", print_background=True)
+            await browser.close()
+    except Exception as exc:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to render PDF. Ensure Playwright Chromium is installed. Error: {exc}",
+        ) from exc
+
+    filename = f"report_{report_id}.pdf"
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @app.get("/reports/{report_id}/files/{file_path:path}")

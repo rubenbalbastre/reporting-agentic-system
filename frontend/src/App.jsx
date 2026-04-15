@@ -86,6 +86,14 @@ export default function App() {
           <section className="panel report-panel">
             <div className="panel-head">
               <h2>Report Preview</h2>
+              <button
+                onClick={report.exportReportPdf}
+                disabled={!report.activeReportId}
+                title="Export report as PDF"
+                aria-label="Export report as PDF"
+              >
+                Export PDF
+              </button>
             </div>
             <div className="panel-content markdown-content">
               <ReactMarkdown

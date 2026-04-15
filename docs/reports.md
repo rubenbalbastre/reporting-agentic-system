@@ -54,6 +54,7 @@ Each report has a folder in shared storage:
 - `GET /conversations/{conversation_id}/messages`
 - `POST /conversations/{conversation_id}/messages`
 - `GET /reports/{report_id}/markdown`
+- `GET /reports/{report_id}/pdf`
 - `GET /reports/{report_id}/files/{file_path}`
 
 ## UX Actions
@@ -74,6 +75,7 @@ View controls:
 - Original View
 - Expand Report
 - Expand Chat
+- Export PDF (from Report Preview header)
 
 ## Delete Behavior
 
@@ -86,4 +88,5 @@ Deleting a report:
 ## Notes
 
 - Report preview renders markdown and supports embedded files via `/reports/{id}/files/{path}`.
+- PDF export renders the current report markdown (including report workspace images) through Playwright Chromium.
 - Main page scrolling is disabled; each panel scrolls independently.

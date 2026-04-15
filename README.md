@@ -111,6 +111,7 @@ Run `make help` for full list.
 - `GET /conversations/{conversation_id}/messages`
 - `POST /conversations/{conversation_id}/messages`
 - `GET /reports/{report_id}/markdown`
+- `GET /reports/{report_id}/pdf`
 - `GET /reports/{report_id}/files/{file_path}`
 
 ### Skills
