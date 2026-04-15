@@ -26,11 +26,15 @@ ReportingAgent is an agentic reporting app that turns chat requests into iterati
 ```text
 Frontend (React + Vite)
   -> Backend API (FastAPI)
-      -> Main backend agent
-      -> Skill chat + skill publish agents
+      -> Report chat endpoint runs main_agent (gpt-5.4-mini)
+          -> tool: call worker /invoke with {query, report_id}
+          -> tool: report_agent (workspace-safe report/file editing)
+      -> Skills endpoints run:
+          -> skill_chat_agent (gpt-5.4-nano) for teaching conversations
+          -> skill_agent (gpt-5.4-nano) for publish JSON output
       -> Worker API (/invoke)
-          -> Code planner + code executor
-          -> Shared skill search/read tools
+          -> code_executor_agent (gpt-5.4-mini, structured output)
+          -> tools: workspace file ops, run_python, DB inspection, shared skill search/read
 
 Postgres stores app state (reports, conversations, messages, skills, skill_conversations, skill_messages)
 Shared volume stores report files under /data/shared/jobs/report_<id>/
@@ -40,9 +44,9 @@ Shared volume stores skills under /data/shared/skills/<skill_slug>/SKILL.md
 ## Repository Layout 📁
 
 ```text
-backend/                 FastAPI API + backend agents
+backend/                 FastAPI API + main/report/skill agents
 frontend/                React/Vite UI
-worker/                  FastAPI worker + planner/executor agents
+worker/                  FastAPI worker + code executor agent
 infra/postgres/          SQL schemas (app + Olist)
 docs/                    Feature docs (skills, reports)
 scripts/                 Kaggle download/load helpers
@@ -114,6 +118,10 @@ Run `make help` for full list.
 - `GET /reports/{report_id}/pdf`
 - `GET /reports/{report_id}/files/{file_path}`
 
+Notes:
+- Creating a report also creates its first conversation row.
+- Sending a report chat message runs the backend main agent, which can call worker `/invoke` and then update `report.md`.
+
 ### Skills
 
 - `GET /skills`
@@ -126,6 +134,10 @@ Run `make help` for full list.
 - `POST /skill-conversations/{skill_conversation_id}/messages`
 - `POST /skills/{skill_id}/publish`
 
+Notes:
+- Creating a skill also creates its first `skill_conversation`.
+- `GET /skills/{skill_id}/markdown` returns 404 until the skill has been published at least once.
+
 ### Compatibility
 
 - `POST /agent/teach` (legacy quick-save)
@@ -135,6 +147,10 @@ Run `make help` for full list.
 
 - `GET /health` (backend)
 - `GET /health` (worker)
+
+### Internal Worker
+
+- `POST /invoke` (called by backend main agent)
 
 ## Storage & Lifecycle 🗂️
 
@@ -149,6 +165,7 @@ Run `make help` for full list.
 - One report can have multiple conversations.
 - Deleting a report cascades to conversations/messages.
 - Workspace folder cleanup is best-effort.
+- Worker-generated artifacts are typically placed in the same workspace (for example `figures/`).
 
 ### Skills (Shared)
 
@@ -159,7 +176,7 @@ Run `make help` for full list.
 - `/data/shared` is backed by Docker volume `shared_data`.
 - `SKILL.md` requires YAML frontmatter (`name`, `description`) and markdown instructions.
 - Current implementation is intentionally basic (single markdown file per skill).
-- Current skill search is simple; a RAG-based retrieval layer is a likely next step.
+- Worker skill retrieval is keyword/frontmatter based (`search_agent_skills` + `read_agent_skill`).
 
 ## Optional: Load Olist Dataset 📊
 
@@ -177,6 +194,7 @@ make kaggle-setup
 
 ## Additional Docs 📚
 
+- [docs/agents.md](docs/agents.md)
 - [docs/reports.md](docs/reports.md)
 - [docs/skills.md](docs/skills.md)
 

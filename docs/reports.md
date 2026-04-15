@@ -32,6 +32,9 @@ Relations:
 
 This allows multiple conversations for a single report workspace.
 
+Implementation detail:
+- Creating a report inserts one initial conversation automatically.
+
 ## Workspace Mapping
 
 Each report has a folder in shared storage:
@@ -43,6 +46,29 @@ Each report has a folder in shared storage:
 ```
 
 `report.md` is served to the preview UI.
+
+Initial content:
+- New reports get a starter markdown with title, report id, and creation timestamp.
+
+## Agentic Flow
+
+When sending `POST /conversations/{conversation_id}/messages`:
+
+1. Backend loads conversation history and ensures `report.md` exists.
+2. Backend runs `main_agent` (model `gpt-5.4-mini`).
+3. `main_agent` can use:
+   - `call_artifact_worker` -> `POST /invoke` on worker with `{query, report_id}`.
+   - `report_agent` -> workspace-safe tools to read/update `report.md` and files.
+4. Worker `/invoke` runs `code_executor_agent` (model `gpt-5.4-mini`) with tools for:
+   - file operations in `report_<id>/`
+   - Python execution (`run_python`)
+   - PostgreSQL inspection helpers
+   - shared skill search/read
+5. Backend stores user and assistant messages in `messages`.
+
+Worker result contract:
+- `needs_more_info`: backend receives a clarification question with missing info.
+- `ready_to_execute`: backend receives a short execution summary.
 
 ## Backend API
 
