@@ -4,8 +4,8 @@ import os
 import requests
 from agents import Agent, Runner, function_tool
 from opentelemetry.propagate import inject
-from app.report_agent import build_report_agent
-from app.prompts import build_main_agent_instructions
+from app.agents.report_agent import build_report_agent
+from app.agents.prompts import build_main_agent_instructions
 
 
 def build_main_agent(report_id: int) -> Agent:

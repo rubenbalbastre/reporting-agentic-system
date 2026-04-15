@@ -1,11 +1,11 @@
 from agents import function_tool, Agent
 from pathlib import Path
-from app.workspace_paths import (
+from app.utils.workspace_paths import (
     get_report_workspace,
     get_report_markdown_path,
     resolve_workspace_relative_path,
 )
-from app.prompts import build_report_agent_instructions
+from app.agents.prompts import build_report_agent_instructions
 
 
 def build_report_agent(report_id: int) -> Agent:
