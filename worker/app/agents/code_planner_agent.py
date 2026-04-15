@@ -55,7 +55,7 @@ def build_code_planner_agent() -> Agent:
     return Agent(
         name="code_planner",
         instructions=build_code_planner_instructions(additional_instructions),
-        model="gpt-5.4-nano",
+        model="gpt-5.4-mini",
         output_type=CodePlan,
         tools=[
             build_database_agent().as_tool(

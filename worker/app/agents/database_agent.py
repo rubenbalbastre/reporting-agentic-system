@@ -15,71 +15,87 @@ def get_db_connection():
 
 
 @function_tool
-def get_database_schema():
+def get_database_schema(
+    include_primary_keys: bool = False,
+    include_column_types: bool = True,
+    include_nullable: bool = False,
+    include_defaults: bool = False,
+):
     """
     Extracts schema information from a PostgreSQL database.
+    By default, returns a compact view to reduce token usage like:
+    {table_name: [{"name": "column_a", "type": "text"}, ...]}
 
-    Args:
-        conn: psycopg2 connection object
-
-    Returns:
-        dict: {
-            table_name: {
-                "columns": [
-                    {
-                        "name": column_name,
-                        "type": data_type,
-                        "nullable": bool,
-                        "default": default_value
-                    },
-                    ...
-                ],
-                "primary_key": [col1, col2, ...]
-            },
-            ...
-        }
+    Use flags to include more details when needed.
     """
-
-    schema = defaultdict(lambda: {"columns": [], "primary_key": []})
+    include_any_column_metadata = include_column_types or include_nullable or include_defaults
+    schema = defaultdict(list)
+    detailed_schema = defaultdict(lambda: {"columns": [], "primary_key": []})
 
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            # --- Get columns ---
-            cur.execute("""
-                SELECT
-                    table_name,
-                    column_name,
-                    data_type,
-                    is_nullable,
-                    column_default
-                FROM information_schema.columns
-                WHERE table_schema = 'public'
-                ORDER BY table_name, ordinal_position;
-            """)
+            if include_any_column_metadata:
+                cur.execute("""
+                    SELECT
+                        table_name,
+                        column_name,
+                        data_type,
+                        is_nullable,
+                        column_default
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name, ordinal_position;
+                """)
 
-            for row in cur.fetchall():
-                table, col, dtype, nullable, default = row
-                schema[table]["columns"].append({
-                    "name": col,
-                    "type": dtype,
-                    "nullable": nullable == "YES",
-                    "default": default
-                })
+                for table, col, dtype, nullable, default in cur.fetchall():
+                    column_info = {"name": col}
+                    if include_column_types:
+                        column_info["type"] = dtype
+                    if include_nullable:
+                        column_info["nullable"] = nullable == "YES"
+                    if include_defaults:
+                        column_info["default"] = default
+                    detailed_schema[table]["columns"].append(column_info)
+            else:
+                cur.execute("""
+                    SELECT
+                        table_name,
+                        column_name
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                    ORDER BY table_name, ordinal_position;
+                """)
 
-            # --- Get primary keys ---
-            cur.execute("""
-                SELECT
-                    tc.table_name,
-                    kcu.column_name
-                FROM information_schema.table_constraints tc
-                JOIN information_schema.key_column_usage kcu
-                ON tc.constraint_name = kcu.constraint_name
-                WHERE tc.constraint_type = 'PRIMARY KEY'
-                AND tc.table_schema = 'public';
-            """)
+                for table, col in cur.fetchall():
+                    schema[table].append(col)
 
-            for table, col in cur.fetchall():
-                schema[table]["primary_key"].append(col)
+            if include_primary_keys:
+                cur.execute("""
+                    SELECT
+                        tc.table_name,
+                        kcu.column_name
+                    FROM information_schema.table_constraints tc
+                    JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                    WHERE tc.constraint_type = 'PRIMARY KEY'
+                    AND tc.table_schema = 'public';
+                """)
+
+                for table, col in cur.fetchall():
+                    if include_any_column_metadata:
+                        detailed_schema[table]["primary_key"].append(col)
+                    else:
+                        if table not in detailed_schema:
+                            detailed_schema[table] = {"columns": [], "primary_key": []}
+                            detailed_schema[table]["columns"] = schema.get(table, [])
+                        detailed_schema[table]["primary_key"].append(col)
+
+    if include_any_column_metadata or include_primary_keys:
+        if not include_any_column_metadata:
+            for table, cols in schema.items():
+                if table not in detailed_schema:
+                    detailed_schema[table] = {"columns": cols, "primary_key": []}
+        return dict(detailed_schema)
 
     return dict(schema)
 

@@ -138,10 +138,19 @@ def report_markdown_to_html(report_id: int, content: str) -> str:
 
     def _replace_src(match: re.Match[str]) -> str:
         src = match.group(1)
-        prefix = f"/reports/{report_id}/files/"
-        if not src.startswith(prefix):
+        rel: str | None = None
+        files_prefix = f"/reports/{report_id}/files/"
+        figures_prefix = f"/reports/{report_id}/figures/"
+
+        if src.startswith(files_prefix):
+            rel = src[len(files_prefix):]
+        elif src.startswith(figures_prefix):
+            rel = f"figures/{src[len(figures_prefix):]}"
+        elif src.startswith("figures/"):
+            rel = src
+        else:
             return match.group(0)
-        rel = src[len(prefix):]
+
         try:
             safe_file_path = resolve_workspace_relative_path(workspace, rel)
             if not safe_file_path.exists() or not safe_file_path.is_file():

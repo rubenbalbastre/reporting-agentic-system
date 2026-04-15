@@ -89,6 +89,32 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
         return file_path.read_text(encoding="utf-8")
 
     @function_tool
+    def replace_in_file(path: str, old_text: str, new_text: str, replace_all: bool = False) -> str:
+        """Replace text in a workspace file. Errors if old_text is not found."""
+        if not old_text:
+            return "ERROR: old_text must be non-empty"
+        file_path = safe_path(path)
+        if not file_path.exists() or not file_path.is_file():
+            return f"ERROR: {path} does not exist"
+        if not _is_probably_text(file_path):
+            return f"ERROR: {path} is not a text file"
+
+        original = file_path.read_text(encoding="utf-8")
+        if old_text not in original:
+            return f"ERROR: old_text not found in {path}"
+
+        count = original.count(old_text)
+        if replace_all:
+            updated = original.replace(old_text, new_text)
+            replaced = count
+        else:
+            updated = original.replace(old_text, new_text, 1)
+            replaced = 1
+
+        file_path.write_text(updated, encoding="utf-8")
+        return f"Replaced {replaced} occurrence(s) in {path}"
+
+    @function_tool
     def list_files(path: str = ".") -> str:
         """List files recursively inside a workspace directory."""
         dir_path = safe_path(path)
@@ -105,27 +131,42 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
         return "\n".join(items) if items else "(empty)"
 
     @function_tool
-    def run_python(entrypoint: str, timeout: int = 10) -> str:
+    def run_python(script_path: str, timeout: int = 10) -> str:
         """
-        Execute a Python file from the workspace and return stdout/stderr.
-            - entrypoint: path to the Python file to execute, relative to the workspace.
-            - timeout: maximum execution time in seconds.
+        Execute a Python script from the workspace and return a structured text report.
+
+        Args:
+            script_path: Relative path to the Python file inside the workspace.
+                Absolute paths and paths escaping the workspace are rejected by `safe_path`.
+            timeout: Max execution time in seconds for `subprocess.run`.
+
+        Behavior:
+            - If `script_path` does not exist, returns an `ERROR:` message and lists
+              available `.py` files in the workspace when possible.
+            - If `script_path` exists but is not a file, returns an `ERROR:` message.
+            - If execution succeeds or fails, always returns:
+              `exit_code=<int>`, followed by stdout and stderr sections.
+
+        Returns:
+            A plain-text string intended for LLM consumption, either an `ERROR:` message
+            or an execution report with `exit_code`, `--- STDOUT ---`, and
+            `--- STDERR ---` blocks.
         """
-        file_path = safe_path(entrypoint)
+        file_path = safe_path(script_path)
         if not file_path.exists():
             available = sorted(str(p.relative_to(workspace)) for p in workspace.rglob("*.py"))
             if not available:
                 return (
-                    f"ERROR: {entrypoint} does not exist\n"
+                    f"ERROR: {script_path} does not exist\n"
                     "No Python files found in workspace. Create one with write_file first."
                 )
             return (
-                f"ERROR: {entrypoint} does not exist\n"
+                f"ERROR: {script_path} does not exist\n"
                 "Available Python files:\n"
                 + "\n".join(f"- {item}" for item in available)
             )
         if not file_path.is_file():
-            return f"ERROR: {entrypoint} is not a file"
+            return f"ERROR: {script_path} is not a file"
 
         result = subprocess.run(
             ["python", str(file_path)],
@@ -163,9 +204,9 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     code_agent = Agent(
         name="code_assistant",
         instructions=build_code_executor_instructions(additional_instructions),
-        model="gpt-5.4-nano",
+        model="gpt-5.4-mini",
         tools=[
-            write_file, read_file, list_files,
+            write_file, read_file, replace_in_file, list_files,
             run_python,
             get_database_schema,
             get_unique_values,

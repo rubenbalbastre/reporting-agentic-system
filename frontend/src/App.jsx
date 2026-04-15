@@ -12,7 +12,17 @@ export default function App() {
 
   function resolveMarkdownAssetUrl(src) {
     if (!src) return "";
-    if (src.startsWith("/reports/")) return `${api.API_BASE}${src}`;
+    if (src.startsWith("/reports/")) {
+      return `${api.API_BASE}${src}`;
+    }
+
+    if (report.activeReportId) {
+      const rel = src.replace(/^\.\//, "").replace(/^\/+/, "");
+      if (rel.startsWith("figures/")) {
+        return `${api.API_BASE}/reports/${report.activeReportId}/files/${rel}`;
+      }
+    }
+
     return src;
   }
 
