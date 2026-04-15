@@ -9,7 +9,6 @@ from contextlib import asynccontextmanager
 from opentelemetry.propagate import extract
 from opentelemetry.context import attach, detach
 
-from app.agents.code_planner_agent import build_code_planner_agent
 from app.agents.code_executor_agent import build_code_executor_agent
 from app.schemas import InvokeRequest
 
@@ -52,30 +51,16 @@ async def invoke(request: InvokeRequest, http_request: Request) -> dict:
         workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs"))
         workspace_dir = str(workspace_root / session_id)
 
-        planner_code_agent = build_code_planner_agent()
-        code_executor_agent = build_code_executor_agent(workspace_dir=workspace_dir)
+        code_agent = build_code_executor_agent(workspace_dir=workspace_dir)
 
-        # get plan
-        plan_result = await Runner.run(planner_code_agent, request.query)
-        plan_result = plan_result.final_output
+        # run code agent
+        result = await Runner.run(code_agent, request.query)
+        result = result.final_output
 
-        #  ask more info
-        if plan_result.status == "needs_more_info":
-            out = plan_result.clarification_question + "\nMissing information: " + ", ".join(plan_result.missing_information)
-        
-        # execute plan
-        elif plan_result.status == "ready_to_execute":
-            steps_text = "\n".join(step.model_dump_json() for step in plan_result.steps)
-            skills_text = ", ".join(plan_result.skills_to_apply) if plan_result.skills_to_apply else "(none)"
-            notes_text = plan_result.skill_notes or "No specific skill notes."
-            executor_input = (
-                f"User request:\n{request.query}\n\n"
-                f"Skills to apply:\n{skills_text}\n\n"
-                f"Skill notes:\n{notes_text}\n\n"
-                f"Plan steps:\n{steps_text}"
-            )
-            execution_result = await Runner.run(code_executor_agent, executor_input, max_turns=30)
-            out = execution_result.final_output
+        if result.status == "needs_more_info":
+            out = result.clarification_question + "\nMissing information: " + ", ".join(result.missing_information)
+        elif result.status == "ready_to_execute":
+            out = result.summary
             
         return {"result": out, "session_id": session_id}
     finally:
