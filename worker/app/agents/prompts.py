@@ -59,6 +59,7 @@ Output requirement:
 - Do not claim code works unless it was executed successfully.
 - In the final response, include the exact script path that executed successfully.
 - There exist in the workspace a report.md file which should contain the final answer to the user's question.
+- Write figures under a relative figures/ directory."
 """.strip()
 
     if additional_instructions:
