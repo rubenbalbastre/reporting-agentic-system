@@ -2,7 +2,6 @@ from agents import Agent, function_tool
 from pydantic import BaseModel
 
 from app.agents.database_agent import build_database_agent
-from app.utils.common_tools import think_tool
 from app.agents.instructions import load_agent_notes
 from app.agents.prompts import build_code_planner_instructions
 from app.utils.shared_skills import search_shared_skills, read_shared_skill
@@ -18,7 +17,7 @@ from typing import Literal, List, Optional
 
 class PlanStep(BaseModel):
     step_id: int
-    action: Literal["list_files", "read_file", "write_file", "run_python", "think_tool"]
+    action: Literal["list_files", "read_file", "write_file", "run_python"]
     target: Optional[str] = None
     reason: str
 
@@ -65,6 +64,5 @@ def build_code_planner_agent() -> Agent:
             ),
             search_agent_skills,
             read_agent_skill,
-            # think_tool
         ]
     )
