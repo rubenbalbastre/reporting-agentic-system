@@ -17,14 +17,14 @@ def get_db_connection():
 @function_tool
 def get_database_schema(
     include_primary_keys: bool = False,
-    include_column_types: bool = False,
+    include_column_types: bool = True,
     include_nullable: bool = False,
     include_defaults: bool = False,
 ):
     """
     Extracts schema information from a PostgreSQL database.
-    By default, returns a compact view to reduce token usage:
-    {table_name: ["column_a", "column_b", ...]}
+    By default, returns a compact view to reduce token usage like:
+    {table_name: [{"name": "column_a", "type": "text"}, ...]}
 
     Use flags to include more details when needed.
     """
