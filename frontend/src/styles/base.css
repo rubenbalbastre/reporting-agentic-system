@@ -153,10 +153,18 @@ h2 {
 .message {
   border: 1px solid var(--line);
   border-radius: 14px;
-  padding: 10px 12px;
+  padding: 9px 11px;
   color: var(--subtext);
   background: rgba(255, 255, 255, 0.78);
   max-width: 82%;
+}
+
+.message p {
+  margin: 0;
+}
+
+.message p + p {
+  margin-top: 6px;
 }
 
 .message.user {
