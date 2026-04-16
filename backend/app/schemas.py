@@ -27,6 +27,10 @@ class CreateReportRequest(BaseModel):
     title: str = "New Report"
 
 
+class UpdateReportTitleRequest(BaseModel):
+    title: str
+
+
 class CreateMessageRequest(BaseModel):
     content: str
 
