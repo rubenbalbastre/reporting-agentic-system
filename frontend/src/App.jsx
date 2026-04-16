@@ -3,13 +3,16 @@ import remarkGfm from "remark-gfm";
 import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import ReportChatPanel from "./components/ReportChatPanel";
 import TeachAgentModal from "./components/TeachAgentModal";
+import ToastStack from "./components/ToastStack";
 import { api } from "./api";
 import { useReportChat, VIEW } from "./hooks/useReportChat";
 import { useSkillTeaching } from "./hooks/useSkillTeaching";
+import { useToast } from "./hooks/useToast";
 
 export default function App() {
-  const report = useReportChat();
-  const skill = useSkillTeaching();
+  const { toasts, toast } = useToast();
+  const report = useReportChat(toast);
+  const skill = useSkillTeaching(toast);
 
   function resolveMarkdownAssetUrl(src) {
     if (!src) return "";
@@ -71,62 +74,60 @@ export default function App() {
         </div>
       </header>
 
-      <div className={report.layoutClassName}>
-        {report.sidebarVisible && (
-          <aside className="sidebar">
-            <div className="sidebar-head">
-              <h2>Reports</h2>
-              <div className="sidebar-actions">
-                <button
-                  className="icon-action-btn btn-ghost"
-                  onClick={report.createReport}
-                  title="New report"
-                  aria-label="New report"
-                >
-                  <Plus size={16} strokeWidth={2} aria-hidden="true" />
-                </button>
-                <button
-                  className="icon-action-btn btn-ghost"
-                  onClick={report.renameReport}
-                  disabled={!report.activeReportId}
-                  title="Rename report"
-                  aria-label="Rename report"
-                >
-                  <Pencil size={16} strokeWidth={2} aria-hidden="true" />
-                </button>
-                <button
-                  className="btn-delete-report icon-danger-btn"
-                  onClick={() => {
-                    if (!report.activeReportId) return;
-                    const confirmed = window.confirm("Delete this report and all its conversations?");
-                    if (confirmed) report.deleteReport();
-                  }}
-                  disabled={!report.activeReportId || report.deleteReportLoading}
-                  title={report.deleteReportLoading ? "Deleting report..." : "Delete report"}
-                  aria-label={report.deleteReportLoading ? "Deleting report" : "Delete report"}
-                >
-                  {report.deleteReportLoading ? "…" : <Trash2 size={16} strokeWidth={2} aria-hidden="true" />}
-                </button>
-              </div>
+      <div className={`${report.layoutClassName} ${report.sidebarVisible ? "sidebar-visible" : "sidebar-collapsed"}`}>
+        <aside className="sidebar">
+          <div className="sidebar-head">
+            <h2>Reports</h2>
+            <div className="sidebar-actions">
+              <button
+                className="icon-action-btn btn-ghost"
+                onClick={report.createReport}
+                title="New report"
+                aria-label="New report"
+              >
+                <Plus size={16} strokeWidth={2} aria-hidden="true" />
+              </button>
+              <button
+                className="icon-action-btn btn-ghost"
+                onClick={report.renameReport}
+                disabled={!report.activeReportId}
+                title="Rename report"
+                aria-label="Rename report"
+              >
+                <Pencil size={16} strokeWidth={2} aria-hidden="true" />
+              </button>
+              <button
+                className="btn-delete-report icon-danger-btn"
+                onClick={() => {
+                  if (!report.activeReportId) return;
+                  const confirmed = window.confirm("Delete this report and all its conversations?");
+                  if (confirmed) report.deleteReport();
+                }}
+                disabled={!report.activeReportId || report.deleteReportLoading}
+                title={report.deleteReportLoading ? "Deleting report..." : "Delete report"}
+                aria-label={report.deleteReportLoading ? "Deleting report" : "Delete report"}
+              >
+                {report.deleteReportLoading ? "…" : <Trash2 size={16} strokeWidth={2} aria-hidden="true" />}
+              </button>
             </div>
-            <ul>
-              {report.reports.map((r) => (
-                <li key={r.id}>
-                  <button
-                    className={r.id === report.activeReportId ? "active" : ""}
-                    onClick={() => report.setActiveReportId(r.id)}
-                  >
-                    {r.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </aside>
-        )}
+          </div>
+          <ul>
+            {report.reports.map((r) => (
+              <li key={r.id}>
+                <button
+                  className={r.id === report.activeReportId ? "active" : ""}
+                  onClick={() => report.setActiveReportId(r.id)}
+                >
+                  {r.title}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </aside>
 
         {report.showReportPanel && (
           <section className="panel report-panel">
-            <div className="panel-head">
+            <div className="panel-head sticky-head">
               <h2>Report Preview</h2>
               <button
                 className="btn-secondary"
@@ -193,6 +194,8 @@ export default function App() {
         onSendSkillMessage={skill.sendSkillMessage}
         onPublishSkill={skill.publishSkill}
       />
+
+      <ToastStack toasts={toasts} onDismiss={toast.remove} />
     </div>
   );
 }

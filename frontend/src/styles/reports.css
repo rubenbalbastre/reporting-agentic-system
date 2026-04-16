@@ -53,20 +53,8 @@
   white-space: nowrap;
 }
 
-.app-title-brand {
-  color: var(--text);
-}
-
-.app-title-report {
-  color: var(--accent);
-}
-
-.view-controls {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
+.app-title-brand { color: var(--text); }
+.app-title-report { color: var(--accent); }
 
 .teach-btn:hover:not(:disabled) {
   box-shadow: 0 8px 18px rgba(0, 113, 227, 0.28);
@@ -102,29 +90,32 @@
 }
 
 .layout {
+  --sidebar-width: 260px;
   display: grid;
   gap: var(--space-4);
   flex: 1;
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.layout.with-sidebar.two-panels {
-  grid-template-columns: 260px 1fr 1fr;
+.layout.sidebar-collapsed { --sidebar-width: 0px; }
+
+.layout.two-panels { grid-template-columns: var(--sidebar-width) 1fr 1fr; }
+.layout.report-only,
+.layout.chat-only { grid-template-columns: var(--sidebar-width) 1fr; }
+.layout.empty { grid-template-columns: var(--sidebar-width) 1fr; }
+
+.sidebar {
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 180ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-.layout.no-sidebar.two-panels {
-  grid-template-columns: 1fr 1fr;
-}
-
-.layout.with-sidebar.report-only,
-.layout.with-sidebar.chat-only {
-  grid-template-columns: 260px 1fr;
-}
-
-.layout.no-sidebar.report-only,
-.layout.no-sidebar.chat-only {
-  grid-template-columns: 1fr;
+.layout.sidebar-collapsed .sidebar {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
 }
 
 .sidebar ul {
@@ -148,6 +139,15 @@
   border-color: rgba(0, 113, 227, 0.28);
 }
 
+.sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.84);
+}
+
 .conversation-controls {
   display: flex;
   align-items: center;
@@ -155,13 +155,13 @@
 }
 
 .conversation-controls select {
-  min-width: 180px;
+  min-width: 220px;
 }
 
 .chat-messages {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
+  gap: 10px;
   padding-left: 12px;
   padding-right: 12px;
 }
@@ -169,6 +169,21 @@
 .chat-messages > .empty-state {
   flex: 1;
   min-height: 100%;
+}
+
+.message-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.message-wrap.user { align-items: flex-end; }
+.message-wrap.assistant { align-items: flex-start; }
+
+.message-meta {
+  font-size: 11px;
+  color: #8e8e93;
+  padding: 0 2px;
 }
 
 .report-panel .markdown-content {
@@ -181,14 +196,53 @@
   max-width: 940px;
 }
 
+.report-panel .prose-container p,
+.report-panel .prose-container li,
+.report-panel .prose-container blockquote {
+  color: #2f3135;
+}
+
+.report-panel .prose-container code {
+  background: rgba(17, 24, 39, 0.06);
+  border: 1px solid rgba(17, 24, 39, 0.08);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.report-panel .prose-container pre {
+  background: #15171b;
+  color: #f3f5f7;
+  border-radius: 12px;
+  padding: 14px;
+  overflow: auto;
+}
+
+.report-panel .prose-container pre code {
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.report-panel .prose-container blockquote {
+  margin: 14px 0;
+  padding: 10px 14px;
+  border-left: 3px solid rgba(0, 113, 227, 0.4);
+  background: rgba(0, 113, 227, 0.06);
+  border-radius: 10px;
+}
+
+.report-panel .prose-container tr:nth-child(even) td {
+  background: rgba(17, 24, 39, 0.02);
+}
+
 .btn-send-report:hover:not(:disabled) {
   box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
 }
 
 @media (max-width: 1180px) {
   .topbar {
-    align-items: flex-start;
-    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
   }
 
   .topbar-main {
@@ -196,14 +250,35 @@
     justify-content: space-between;
   }
 
-  .app-title {
-    font-size: 22px;
+  .topbar-utilities {
+    width: 100%;
+    justify-content: flex-end;
   }
+
+  .app-title { font-size: 22px; }
+}
+
+@media (max-width: 900px) {
+  .app-shell { padding: 14px; }
+  .layout.two-panels,
+  .layout.report-only,
+  .layout.chat-only,
+  .layout.empty { grid-template-columns: 1fr; }
+  .sidebar { display: none; }
 }
 
 @media (max-width: 700px) {
   .topbar-main {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .segmented-control,
+  .topbar-utilities .teach-btn {
+    width: 100%;
+  }
+
+  .segmented-control .segment {
+    flex: 1;
   }
 }
