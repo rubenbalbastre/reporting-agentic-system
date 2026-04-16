@@ -2,11 +2,11 @@ import os
 import requests
 from agents import Agent, function_tool
 from opentelemetry.propagate import inject
-from app.agents.report_agent import build_report_agent
-from app.agents.prompts import build_main_agent_instructions
+from app.agents.editor_agent import build_editor_agent
+from app.agents.prompts import build_reporting_agent_instructions
 
 
-def build_main_agent(report_id: int) -> Agent:
+def build_reporting_agent(report_id: int) -> Agent:
     @function_tool
     def call_artifact_worker(content: str) -> str:
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
@@ -26,12 +26,12 @@ def build_main_agent(report_id: int) -> Agent:
             return f"Artifact worker request failed: {exc}"
 
     agent = Agent(
-        name="main_agent",
-        instructions=build_main_agent_instructions(),
+        name="reporting_agent",
+        instructions=build_reporting_agent_instructions(),
         model="gpt-5.4-mini",
         tools=[
-            build_report_agent(report_id=report_id).as_tool(
-                tool_name="report_agent",
+            build_editor_agent(report_id=report_id).as_tool(
+                tool_name="editor_agent",
                 tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
             ),
             call_artifact_worker,

@@ -11,7 +11,7 @@ from app.utils.workspace_paths import (
 from app.agents.prompts import build_report_agent_instructions
 
 
-def build_report_agent(report_id: int) -> Agent:
+def build_editor_agent(report_id: int) -> Agent:
     workspace = get_report_workspace(report_id)
     report_files_prefixes = (f"/reports/{report_id}/files/", f"/reports/{report_id}/")
     image_ref_pattern = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
@@ -284,7 +284,7 @@ def build_report_agent(report_id: int) -> Agent:
         return f"Section '{canonical_heading}' updated. Removed {removed} duplicate(s)."
 
     return Agent(
-        name="report_agent",
+        name="editor_agent",
         instructions=build_report_agent_instructions(report_id),
         model="gpt-5.4-mini",
         tools=[

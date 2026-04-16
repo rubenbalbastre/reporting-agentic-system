@@ -2,7 +2,7 @@ from agents import Runner
 from fastapi import HTTPException
 from pathlib import Path
 
-from app.agents.main_skill_agent import build_main_skill_agent
+from app.agents.skill_agent import build_skill_agent
 from app.utils.skill_utils import (
     build_skill_chat_input,
     is_published_skill_path,
@@ -20,7 +20,7 @@ from app.utils.skills import (
 
 async def teach_and_create_skill(content: str) -> dict[str, str]:
     try:
-        skill_agent = build_main_skill_agent(skill_session_id="skill_quick_teach")
+        skill_agent = build_skill_agent(skill_session_id="skill_quick_teach")
         result = await Runner.run(skill_agent, content)
         parsed = parse_skill_agent_output(str(result.final_output))
 
@@ -48,7 +48,7 @@ async def run_skill_conversation_turn(skill_conversation_id: int, user_content: 
         raise HTTPException(status_code=400, detail="Published skill is read-only. Use 'Open in Draft' first.")
     try:
         skill_workspace = str(Path(skill_md_path).resolve().parent)
-        skill_chat_agent = build_main_skill_agent(
+        skill_chat_agent = build_skill_agent(
             skill_session_id=f"skill_{skill_id}",
             workspace_path=skill_workspace,
         )

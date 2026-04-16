@@ -109,7 +109,7 @@ For technical details:
 ## Repo Layout
 
 ```text
-backend/                 FastAPI API + main/report/skill agents
+backend/                 FastAPI API + reporting/editor/skill agents
 frontend/                React/Vite UI
 worker/                  FastAPI worker + code executor agent
 infra/postgres/          SQL schemas (app + Olist)

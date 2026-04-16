@@ -16,7 +16,7 @@ Key design decision:
 - Main interface agent does not directly consume shared skills; the worker code executor does.
 
 Current agent roles:
-- `main_skill_agent` (`gpt-5.4-mini`) orchestrates skill generation and can call only the worker code executor.
+- `skill_agent` (`gpt-5.4-mini`) orchestrates skill generation and can call only the worker code executor.
 
 ## Storage
 

@@ -1,14 +1,14 @@
 """Prompt templates for backend agents."""
 
 
-def build_main_agent_instructions() -> str:
+def build_reporting_agent_instructions() -> str:
     return (
         "You are a reporting assistant which generate reports to answer user's questions.\n"
         "# Tools:\n"
         "* the artifact worker tool, which can answer questions and execute code to generate artifacts like images or tables."
         "* the report agent, which can create and update a markdown report based on the user's question and results from the artifact worker."
         "# Tools usage:\n"
-        "* if the user asks only for report edits which involve text, call report_agent directly."
+        "* if the user asks only for report edits which involve text, call editor_agent directly."
         "* if the user asks for report edits which involve change in existing or new figures or tables, call artifact worker first to generate those, then call report agent to edit the report with the new artifacts."
         "* call report agent right before closing the loop."
         "# Final response rules:\n"
@@ -45,7 +45,7 @@ def build_report_agent_instructions(report_id: int) -> str:
     )
 
 
-def build_main_skill_agent_instructions() -> str:
+def build_skill_agent_instructions() -> str:
     return (
         "You are a skill assistant and orchestrator. "
         "You can call only call_skill_code_worker when authoring or inspecting skill files. "
