@@ -11,25 +11,28 @@ async function parseJson(res) {
   return { ok: res.ok, status: res.status, data };
 }
 
-async function get(path) {
-  const res = await fetch(`${API_BASE}${path}`);
+async function request(method, path, body) {
+  const init = { method };
+  if (body !== undefined) {
+    init.headers = { "Content-Type": "application/json" };
+    init.body = JSON.stringify(body);
+  }
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+  });
   return parseJson(res);
+}
+
+async function get(path) {
+  return request("GET", path);
 }
 
 async function post(path, body) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: body !== undefined ? JSON.stringify(body) : undefined,
-  });
-  return parseJson(res);
+  return request("POST", path, body);
 }
 
 async function del(path) {
-  const res = await fetch(`${API_BASE}${path}`, {
-    method: "DELETE",
-  });
-  return parseJson(res);
+  return request("DELETE", path);
 }
 
 export const api = {
