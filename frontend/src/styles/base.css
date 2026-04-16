@@ -108,11 +108,6 @@ select:focus-visible {
   color: var(--text);
 }
 
-.btn-destructive {
-  color: var(--danger);
-  border-color: rgba(201, 52, 52, 0.35);
-}
-
 h2 {
   margin: 0;
   font-size: 17px;

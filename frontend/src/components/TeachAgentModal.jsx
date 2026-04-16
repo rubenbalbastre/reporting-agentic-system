@@ -65,20 +65,19 @@ export default function TeachAgentModal({
   if (!open) return null;
 
   const [skillsSidebarHidden, setSkillsSidebarHidden] = useState(false);
-  const [titleVersion, setTitleVersion] = useState(0);
+  const [skillTitles, setSkillTitles] = useState(() => loadStoredSkillTitles());
+  const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
   const isSkillEditingView = !!activeSkillId;
   const showExploreSidebar = !skillsSidebarHidden;
   const activeSkill = skills.find((skill) => skill.id === activeSkillId) || null;
-  const skillTitles = useMemo(() => loadStoredSkillTitles(), [titleVersion]);
   const activeSkillTitle = activeSkill ? (skillTitles[activeSkill.id] || "") : "";
 
   const skillConversationOptions = useMemo(() => {
-    const custom = loadStoredTitles();
     return skillConversations.map((c, idx) => {
       const fallback = c.title || `Skill Conversation ${idx + 1}`;
-      return { ...c, displayName: custom[c.id] || fallback };
+      return { ...c, displayName: conversationTitles[c.id] || fallback };
     });
-  }, [skillConversations, titleVersion]);
+  }, [skillConversations, conversationTitles]);
 
   function handleCreateSkillClick() {
     setSkillsSidebarHidden(true);
@@ -93,10 +92,9 @@ export default function TeachAgentModal({
     if (next === null) return;
     const value = next.trim();
     if (!value) return;
-    const custom = loadStoredTitles();
-    custom[activeSkillConversationId] = value;
-    saveStoredTitles(custom);
-    setTitleVersion((n) => n + 1);
+    const updated = { ...conversationTitles, [activeSkillConversationId]: value };
+    setConversationTitles(updated);
+    saveStoredTitles(updated);
   }
 
   function editSkillTitle() {
@@ -105,14 +103,14 @@ export default function TeachAgentModal({
     const next = window.prompt("Skill title", current);
     if (next === null) return;
     const value = next.trim();
-    const custom = loadStoredSkillTitles();
+    const custom = { ...skillTitles };
     if (!value) {
       delete custom[activeSkillId];
     } else {
       custom[activeSkillId] = value;
     }
+    setSkillTitles(custom);
     saveStoredSkillTitles(custom);
-    setTitleVersion((n) => n + 1);
   }
 
   const skillWorkspace = activeSkillId ? (
@@ -248,7 +246,7 @@ export default function TeachAgentModal({
         </div>
 
         <div className="panel-content teach-modal-content">
-          <div className={`teach-explore-layout ${showExploreSidebar ? "sidebar-visible" : "sidebar-hidden"}`}>
+          <div className={`teach-explore-layout ${showExploreSidebar ? "" : "sidebar-hidden"}`}>
             <div className="skills-box skills-sidebar">
                 <div className="sidebar-head sticky-head">
                   <h3>Skills</h3>

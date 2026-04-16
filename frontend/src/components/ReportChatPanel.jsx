@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, Pencil, SquarePen } from "lucide-react";
@@ -36,29 +36,27 @@ export default function ReportChatPanel({
   onCreateConversation,
 }) {
   const hasActiveConversation = Boolean(activeConversationId);
-  const hasConversationMessages = messages.length > 0;
   const showEmptyState = !activeReportId || messages.length === 0;
+  const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
 
   const conversationOptions = useMemo(() => {
-    const custom = loadStoredTitles();
     return conversations.map((c, idx) => {
       const fallback = c.title || `Conversation ${idx + 1}`;
-      const name = custom[c.id] || fallback;
+      const name = conversationTitles[c.id] || fallback;
       return { ...c, displayName: name };
     });
-  }, [conversations]);
+  }, [conversations, conversationTitles]);
 
   function renameConversation() {
     if (!activeConversationId) return;
-    const custom = loadStoredTitles();
     const current = conversationOptions.find((c) => c.id === activeConversationId)?.displayName || "Conversation";
     const next = window.prompt("Rename conversation", current);
     if (next === null) return;
     const value = next.trim();
     if (!value) return;
-    custom[activeConversationId] = value;
-    saveStoredTitles(custom);
-    onConversationChange(activeConversationId);
+    const updated = { ...conversationTitles, [activeConversationId]: value };
+    setConversationTitles(updated);
+    saveStoredTitles(updated);
   }
 
   return (

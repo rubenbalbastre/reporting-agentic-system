@@ -74,7 +74,7 @@ export default function App() {
         </div>
       </header>
 
-      <div className={`${report.layoutClassName} ${report.sidebarVisible ? "sidebar-visible" : "sidebar-collapsed"}`}>
+      <div className={`${report.layoutClassName} ${report.sidebarVisible ? "" : "sidebar-collapsed"}`}>
         <aside className="sidebar">
           <div className="sidebar-head">
             <h2>Reports</h2>
