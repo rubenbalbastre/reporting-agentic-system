@@ -19,16 +19,21 @@ export function useReportChat() {
   const [viewMode, setViewMode] = useState(VIEW.ORIGINAL);
   const [deleteReportLoading, setDeleteReportLoading] = useState(false);
 
+  function resetReportSelection() {
+    setActiveReportId(null);
+    setConversations([]);
+    setActiveConversationId(null);
+    setMessages([]);
+    setMarkdown("# Select or create a report");
+  }
+
   useEffect(() => {
     loadReports();
   }, []);
 
   useEffect(() => {
     if (!activeReportId) {
-      setMarkdown("# Select or create a report");
-      setConversations([]);
-      setActiveConversationId(null);
-      setMessages([]);
+      resetReportSelection();
       return;
     }
     loadConversations(activeReportId);
@@ -48,6 +53,7 @@ export function useReportChat() {
     const list = ok && Array.isArray(data) ? data : [];
     setReports(list);
     if (!activeReportId && list.length) setActiveReportId(list[0].id);
+    return list;
   }
 
   async function loadConversations(reportId) {
@@ -110,15 +116,9 @@ export function useReportChat() {
         alert("Failed to delete report");
         return;
       }
-      const { ok: okReports, data } = await api.get("/reports");
-      const list = okReports && Array.isArray(data) ? data : [];
-      setReports(list);
+      const list = await loadReports();
       if (!list.length) {
-        setActiveReportId(null);
-        setConversations([]);
-        setActiveConversationId(null);
-        setMessages([]);
-        setMarkdown("# Select or create a report");
+        resetReportSelection();
         return;
       }
       const next = list.find((r) => r.id !== deletingId) || list[0];

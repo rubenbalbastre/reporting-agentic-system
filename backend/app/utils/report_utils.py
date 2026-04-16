@@ -12,22 +12,18 @@ from playwright.async_api import async_playwright
 
 from app.utils.db import get_db_connection
 from app.schemas import Message, Report
+from app.utils.chat_input import build_chat_input
 from app.utils.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 
 
-def build_agent_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
-    recent = history_rows[-max_messages:]
-    lines = []
-    for row in recent:
-        role = row["role"]
-        content = row["content"]
-        lines.append(f"{role}: {content}")
-    lines.append(f"user: {user_content}")
-    history_text = "\n".join(lines) if lines else f"user: {user_content}"
-    return (
-        "Use the conversation history to keep context consistent.\n"
-        "Conversation:\n"
-        f"{history_text}"
+def build_agent_input(
+    history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
+) -> list[dict[str, str]]:
+    return build_chat_input(
+        "Use the conversation history to keep context consistent.\nConversation:",
+        history_rows,
+        user_content,
+        max_messages=max_messages,
     )
 
 

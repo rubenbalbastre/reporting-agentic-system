@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app.utils.db import get_db_connection
 from app.schemas import SkillMessage
+from app.utils.chat_input import build_chat_input
 from app.utils.skills import slugify
 
 
@@ -67,13 +68,15 @@ def parse_skill_agent_output(raw_output: str) -> dict[str, str]:
     }
 
 
-def build_skill_chat_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
-    recent = history_rows[-max_messages:]
-    lines = []
-    for row in recent:
-        lines.append(f"{row['role']}: {row['content']}")
-    lines.append(f"user: {user_content}")
-    return "Skill teaching conversation:\n" + "\n".join(lines)
+def build_skill_chat_input(
+    history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
+) -> list[dict[str, str]]:
+    return build_chat_input(
+        "Skill teaching conversation:",
+        history_rows,
+        user_content,
+        max_messages=max_messages,
+    )
 
 
 def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, list[dict[str, Any]]]:

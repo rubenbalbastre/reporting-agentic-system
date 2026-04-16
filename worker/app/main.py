@@ -13,12 +13,7 @@ from app.agents.code_executor_agent import build_code_executor_agent
 from app.schemas import InvokeRequest
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # --- startup logic ---
-    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-    OpenAIAgentsInstrumentor().instrument()
-
+def _log_langfuse_readiness() -> None:
     langfuse = get_client()
     try:
         if langfuse.auth_check():
@@ -27,6 +22,14 @@ async def lifespan(app: FastAPI):
             print("Langfuse authentication failed. Continuing without blocking startup.")
     except Exception as exc:
         print(f"Langfuse check failed ({exc}). Continuing startup without Langfuse readiness check.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # --- startup logic ---
+    load_dotenv(Path(__file__).resolve().parents[2] / ".env")
+    OpenAIAgentsInstrumentor().instrument()
+    _log_langfuse_readiness()
 
     yield  # <-- app is running here
 
