@@ -6,9 +6,11 @@ from opentelemetry.propagate import inject
 from app.agents.prompts import build_skill_agent_instructions
 
 
-def build_skill_agent(skill_session_id: str, workspace_path: str | None = None) -> Agent:
+def build_skill_agent(skill_session_id: str, workspace_path: str) -> Agent:
     @function_tool
     def call_skill_code_worker(content: str) -> str:
+        if not workspace_path:
+            return "Skill code worker request failed: workspace_path is required for skill flows"
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
         endpoint = f"{worker_url.rstrip('/')}/invoke"
         headers: dict[str, str] = {}

@@ -10,7 +10,49 @@ from fastapi import HTTPException
 from app.utils.db import get_db_connection
 from app.schemas import SkillMessage
 from app.utils.chat_input import build_chat_input
-from app.utils.skills import get_main_agent_skills_drafts_root, get_main_agent_skills_root, slugify
+from app.utils.skills import (
+    ensure_draft_skill_md,
+    get_main_agent_skills_drafts_root,
+    get_main_agent_skills_root,
+    slugify,
+)
+
+
+def _ensure_draft_skill_file(cur: Any, skill: dict[str, Any]) -> dict[str, Any]:
+    """Ensure draft skills always have a concrete SKILL.md on disk and in DB."""
+    raw_path = (skill.get("skill_md_path") or "").strip()
+    drafts_root = get_main_agent_skills_drafts_root()
+
+    if raw_path:
+        path = Path(raw_path).resolve()
+        in_drafts = path == drafts_root or drafts_root in path.parents
+        if in_drafts:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            if not path.exists():
+                path.write_text("", encoding="utf-8")
+        return skill
+
+    # Heal legacy/broken draft rows with empty path by rebuilding canonical draft location.
+    slug = (skill.get("slug") or "").strip()
+    if not slug:
+        return skill
+    try:
+        path = ensure_draft_skill_md(slug)
+    except ValueError as exc:
+        raise HTTPException(status_code=500, detail=f"Invalid draft skill path: {exc}") from exc
+
+    cur.execute(
+        """
+        UPDATE skills
+        SET skill_md_path = %s,
+            updated_at = NOW()
+        WHERE id = %s
+        RETURNING id, name, description, slug, skill_md_path, created_at, updated_at;
+        """,
+        (str(path), skill["id"]),
+    )
+    updated = cur.fetchone()
+    return updated or skill
 
 
 def get_skill(cur: Any, skill_id: int) -> dict[str, Any]:
@@ -104,6 +146,7 @@ def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, st
         with conn.cursor() as cur:
             convo = get_skill_conversation(cur, skill_conversation_id)
             skill = get_skill(cur, convo["skill_id"])
+            skill = _ensure_draft_skill_file(cur, skill)
             cur.execute(
                 """
                 SELECT role, content
@@ -113,6 +156,7 @@ def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, st
                 """,
                 (skill_conversation_id,),
             )
+            conn.commit()
             return convo["skill_id"], skill["skill_md_path"], cur.fetchall()
 
 
@@ -208,17 +252,10 @@ def create_skill_row(name: str, description: str = "") -> dict[str, Any]:
                 raise HTTPException(status_code=500, detail="Failed to create skill")
 
             # Create draft SKILL.md immediately so publish updates this same file.
-            skills_root = get_main_agent_skills_drafts_root()
-            skills_root.mkdir(parents=True, exist_ok=True)
-            skill_dir = (skills_root / slug).resolve()
-            if skill_dir.parent != skills_root:
-                raise HTTPException(status_code=500, detail="Invalid skill draft path")
-            skill_dir.mkdir(parents=True, exist_ok=True)
-            skill_md_path = (skill_dir / "SKILL.md").resolve()
-            if skill_md_path.parent != skill_dir:
-                raise HTTPException(status_code=500, detail="Invalid skill markdown path")
-            if not skill_md_path.exists():
-                skill_md_path.write_text("", encoding="utf-8")
+            try:
+                skill_md_path = ensure_draft_skill_md(slug)
+            except ValueError as exc:
+                raise HTTPException(status_code=500, detail=f"Invalid skill draft path: {exc}") from exc
 
             cur.execute(
                 """

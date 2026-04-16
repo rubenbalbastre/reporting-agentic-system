@@ -54,7 +54,22 @@ async def invoke(request: InvokeRequest, http_request: Request) -> dict:
         skills_root = Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills")).resolve()
         skills_drafts_root = Path(os.getenv("MAIN_AGENT_SKILLS_DRAFTS_ROOT", "/data/shared/skills_drafts")).resolve()
 
-        if request.workspace_path:
+        # Skill tasks must always run in an explicit drafts workspace.
+        if request.task_type == "skill":
+            if not request.workspace_path:
+                return {
+                    "result": "Invalid skill request: workspace_path is required",
+                    "session_id": "invalid",
+                }
+            skill_path = Path(request.workspace_path).resolve()
+            if not (skill_path == skills_drafts_root or skills_drafts_root in skill_path.parents):
+                return {
+                    "result": "Invalid skill request: workspace_path must be under skills_drafts root",
+                    "session_id": "invalid",
+                }
+            workspace_dir = str(skill_path)
+            session_id = skill_path.name
+        elif request.workspace_path:
             workspace_path = Path(request.workspace_path).resolve()
             is_under_workspace = workspace_path == workspace_root or workspace_root in workspace_path.parents
             is_under_skills = workspace_path == skills_root or skills_root in workspace_path.parents
