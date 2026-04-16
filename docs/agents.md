@@ -53,11 +53,7 @@ Skills are managed by dedicated backend agents for teaching and publishing.
 
 ### Skills Agents (backend)
 
-- `skill_chat_agent` (`gpt-5.4-nano`): conversational skill teaching turns
-- `skill_agent` (`gpt-5.4-nano`): publishes skill as JSON payload with:
-  - `skill_name`
-  - `description`
-  - `skill_markdown`
+- `main_skill_agent` (`gpt-5.4-mini`): orchestrates skill generation and can only call the worker code executor tool (`POST /invoke`) with a skill session workspace.
 
 ## End-to-End Report Message Flow
 
@@ -97,8 +93,7 @@ For `POST /conversations/{conversation_id}/messages`:
 - `main_agent`: `gpt-5.4-mini`
 - `report_agent`: `gpt-5.4-mini`
 - `code_executor_agent`: `gpt-5.4-mini`
-- `skill_chat_agent`: `gpt-5.4-nano`
-- `skill_agent`: `gpt-5.4-nano`
+- `main_skill_agent`: `gpt-5.4-mini`
 
 ## Design Decisions
 

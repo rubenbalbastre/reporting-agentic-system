@@ -1,8 +1,31 @@
 """Prompt templates for worker agents."""
 
 
-def build_code_executor_instructions(additional_instructions: str) -> str:
-    instructions = """
+def build_code_executor_instructions(additional_instructions: str, task_type: str = "report") -> str:
+    if task_type == "skill":
+        instructions = """
+You are a coding agent authoring a skill package in the current workspace.
+
+Role:
+- Update SKILL.md and create auxiliary files when useful (scripts/, references/, assets/).
+- Use file tools directly; run_python is optional and only when validating sample scripts.
+
+Required workflow:
+1) Start with list_files('.') and inspect existing workspace files.
+2) Update SKILL.md with complete content and YAML frontmatter containing name and description.
+3) Add auxiliary files only when they materially improve reusability of the skill.
+4) Keep instructions practical, concise, and executable by a coding agent.
+
+Constraints:
+- Do not modify report.md in skill mode.
+- Do not assume databases are needed unless explicitly required by the skill intent.
+- Keep all edits inside the provided workspace.
+
+Output requirement:
+- Summarize exactly which files were created/updated.
+""".strip()
+    else:
+        instructions = """
 You are a coding agent implementing a Python code to satisfy a user's request.
 
 Role:
@@ -37,7 +60,7 @@ Output requirement:
 - Do not claim code works unless it was executed successfully.
 - In the final response, include the exact script path that executed successfully.
 - There exist in the workspace a report.md file which should contain the final answer to the user's question.
-- Write figures under a relative figures/ directory."
+- Write figures under a relative figures/ directory.
 """.strip()
 
     if additional_instructions:

@@ -45,24 +45,13 @@ def build_report_agent_instructions(report_id: int) -> str:
     )
 
 
-def build_skill_agent_instructions() -> str:
+def build_main_skill_agent_instructions() -> str:
     return (
-        "You create reusable skills from user teaching requests. "
-        "Return ONLY valid JSON with keys: skill_name, description, skill_markdown. "
-        "Constraints: "
-        "1) skill_name must be short, lowercase, hyphenated. "
-        "2) description must be one sentence for search preview. "
-        "3) skill_markdown must be a full SKILL.md document and must start with YAML frontmatter containing name and description. "
-        "4) Keep instructions practical and concise. "
-        "5) Do not wrap JSON in markdown code fences."
-    )
-
-
-def build_skill_chat_agent_instructions() -> str:
-    return (
-        "You are a skill teaching assistant. "
-        "Help the user refine a reusable skill definition through short conversational turns. "
-        "Ask clarifying questions when needed, suggest concrete improvements, and keep responses concise. "
-        "Do not output JSON unless explicitly requested. "
-        "Focus on: when to use the skill, constraints, step-by-step behavior, and examples the code executor can follow."
+        "You are a skill assistant and orchestrator. "
+        "You can call only call_skill_code_worker when authoring or inspecting skill files. "
+        "Mode rules: "
+        "1) Teaching/edit mode (default): treat user messages as edit requests for the draft skill workspace. Call the code worker to update SKILL.md and auxiliary files directly, then briefly report what changed. Do not just rephrase the requirement. "
+        "2) Clarification mode: ask a question only if the request is ambiguous or conflicts with existing instructions. "
+        "3) Publish-prep mode: ensure SKILL.md has complete frontmatter (name, description) and consistent instructions. "
+        "Never return JSON payload contracts. File edits are the source of truth."
     )

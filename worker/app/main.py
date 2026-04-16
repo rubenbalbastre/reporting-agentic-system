@@ -50,11 +50,27 @@ async def invoke(request: InvokeRequest, http_request: Request) -> dict:
     context_token = attach(parent_context)
 
     try:
-        session_id = f"report_{request.report_id}"
-        workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs"))
-        workspace_dir = str(workspace_root / session_id)
+        workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs")).resolve()
+        skills_root = Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills")).resolve()
+        skills_drafts_root = Path(os.getenv("MAIN_AGENT_SKILLS_DRAFTS_ROOT", "/data/shared/skills_drafts")).resolve()
 
-        code_agent = build_code_executor_agent(workspace_dir=workspace_dir)
+        if request.workspace_path:
+            workspace_path = Path(request.workspace_path).resolve()
+            is_under_workspace = workspace_path == workspace_root or workspace_root in workspace_path.parents
+            is_under_skills = workspace_path == skills_root or skills_root in workspace_path.parents
+            is_under_skill_drafts = workspace_path == skills_drafts_root or skills_drafts_root in workspace_path.parents
+            if not (is_under_workspace or is_under_skills or is_under_skill_drafts):
+                return {
+                    "result": "Invalid workspace_path: must be under workspace, skills, or skills_drafts root",
+                    "session_id": "invalid",
+                }
+            workspace_dir = str(workspace_path)
+            session_id = workspace_path.name
+        else:
+            session_id = request.session_id or f"report_{request.report_id}"
+            workspace_dir = str(workspace_root / session_id)
+
+        code_agent = build_code_executor_agent(workspace_dir=workspace_dir, task_type=request.task_type)
 
         # run code agent
         result = await Runner.run(code_agent, request.query)

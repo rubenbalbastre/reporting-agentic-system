@@ -28,7 +28,7 @@ class CodeAgentResult(BaseModel):
     summary: str
 
 
-def build_code_executor_agent(workspace_dir: str) -> Agent:
+def build_code_executor_agent(workspace_dir: str, task_type: Literal["report", "skill"] = "report") -> Agent:
     workspace = Path(workspace_dir).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
     client = OpenAI()
@@ -211,7 +211,7 @@ def build_code_executor_agent(workspace_dir: str) -> Agent:
     additional_instructions = load_agent_notes()
     code_agent = Agent(
         name="code_assistant",
-        instructions=build_code_executor_instructions(additional_instructions),
+        instructions=build_code_executor_instructions(additional_instructions, task_type=task_type),
         model="gpt-5.4-mini",
         tools=[
             write_file, read_file, replace_in_file, list_files,

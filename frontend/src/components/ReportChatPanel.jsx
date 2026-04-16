@@ -1,22 +1,11 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, Pencil, SquarePen } from "lucide-react";
 import { formatMessageTime } from "../utils/datetime";
+import { useLocalStorageMap } from "../hooks/useLocalStorageMap";
 
 const TITLE_KEY = "reportingagent:conversation-titles";
-
-function loadStoredTitles() {
-  try {
-    return JSON.parse(localStorage.getItem(TITLE_KEY) || "{}");
-  } catch (_err) {
-    return {};
-  }
-}
-
-function saveStoredTitles(map) {
-  localStorage.setItem(TITLE_KEY, JSON.stringify(map));
-}
 
 export default function ReportChatPanel({
   activeReportId,
@@ -31,7 +20,7 @@ export default function ReportChatPanel({
 }) {
   const hasActiveConversation = Boolean(activeConversationId);
   const showEmptyState = !activeReportId || messages.length === 0;
-  const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
+  const { map: conversationTitles, setValue: setConversationTitle } = useLocalStorageMap(TITLE_KEY);
 
   const conversationOptions = useMemo(() => {
     return conversations.map((c, idx) => {
@@ -48,9 +37,7 @@ export default function ReportChatPanel({
     if (next === null) return;
     const value = next.trim();
     if (!value) return;
-    const updated = { ...conversationTitles, [activeConversationId]: value };
-    setConversationTitles(updated);
-    saveStoredTitles(updated);
+    setConversationTitle(activeConversationId, value);
   }
 
   return (

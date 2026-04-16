@@ -16,7 +16,7 @@ def build_main_agent(report_id: int) -> Agent:
         try:
             response = requests.post(
                 endpoint,
-                json={"query": content, "report_id": report_id},
+                json={"query": content, "report_id": report_id, "task_type": "report"},
                 headers=headers,
                 timeout=300,
             )

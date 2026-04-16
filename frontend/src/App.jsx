@@ -5,6 +5,7 @@ import { useState } from "react";
 import ReportChatPanel from "./components/ReportChatPanel";
 import TeachAgentModal from "./components/TeachAgentModal";
 import ConfirmModal from "./components/ConfirmModal";
+import PromptModal from "./components/PromptModal";
 import ToastStack from "./components/ToastStack";
 import { api } from "./api";
 import { useReportChat, VIEW } from "./hooks/useReportChat";
@@ -14,8 +15,15 @@ import { useToast } from "./hooks/useToast";
 export default function App() {
   const { toasts, toast } = useToast();
   const [reportDeleteOpen, setReportDeleteOpen] = useState(false);
+  const [renameReportOpen, setRenameReportOpen] = useState(false);
   const report = useReportChat(toast);
   const skill = useSkillTeaching(toast);
+
+  function openSkillModal(mode) {
+    skill.setActiveSkillId(null);
+    skill.setTeachInitialPanel(mode);
+    skill.setTeachModalOpen(true);
+  }
 
   function resolveMarkdownAssetUrl(src) {
     if (!src) return "";
@@ -71,7 +79,16 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-utilities">
-          <button className="teach-btn btn-primary" onClick={() => skill.setTeachModalOpen(true)}>
+          <button
+            className="btn-secondary"
+            onClick={() => openSkillModal("published")}
+          >
+            Skill Library
+          </button>
+          <button
+            className="teach-btn btn-primary"
+            onClick={() => openSkillModal("draft")}
+          >
             Teach the Agent
           </button>
         </div>
@@ -92,7 +109,7 @@ export default function App() {
               </button>
               <button
                 className="icon-action-btn btn-ghost"
-                onClick={report.renameReport}
+                onClick={() => setRenameReportOpen(true)}
                 disabled={!report.activeReportId}
                 title="Rename report"
                 aria-label="Rename report"
@@ -170,6 +187,7 @@ export default function App() {
 
       <TeachAgentModal
         open={skill.teachModalOpen}
+        mode={skill.teachInitialPanel}
         skills={skill.skills}
         skillsLoading={skill.skillsLoading}
         activeSkillId={skill.activeSkillId}
@@ -179,9 +197,12 @@ export default function App() {
         activeSkillConversationId={skill.activeSkillConversationId}
         skillMessages={skill.skillMessages}
         skillMarkdown={skill.skillMarkdown}
+        skillFiles={skill.skillFiles}
         teachInput={skill.teachInput}
         teachLoading={skill.teachLoading}
         publishLoading={skill.publishLoading}
+        openDraftLoading={skill.openDraftLoading}
+        activeSkillIsPublished={skill.activeSkillIsPublished}
         teachStatus={skill.teachStatus}
         onClose={() => skill.setTeachModalOpen(false)}
         onSelectSkill={skill.setActiveSkillId}
@@ -192,6 +213,7 @@ export default function App() {
         onTeachInput={skill.setTeachInput}
         onSendSkillMessage={skill.sendSkillMessage}
         onPublishSkill={skill.publishSkill}
+        onOpenSkillInDraft={skill.openSkillInDraft}
       />
 
 
@@ -205,6 +227,19 @@ export default function App() {
         onConfirm={async () => {
           await report.deleteReport();
           setReportDeleteOpen(false);
+        }}
+      />
+
+      <PromptModal
+        open={renameReportOpen}
+        title="Rename Report"
+        label="Report name"
+        initialValue={report.activeReportTitle || ""}
+        confirmLabel="Save"
+        onCancel={() => setRenameReportOpen(false)}
+        onConfirm={async (value) => {
+          await report.renameReport(value);
+          setRenameReportOpen(false);
         }}
       />
 

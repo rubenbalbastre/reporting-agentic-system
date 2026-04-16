@@ -3,37 +3,29 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, Eye, EyeOff, Pencil, Plus, Sparkles, SquarePen, Trash2 } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
+import PromptModal from "./PromptModal";
+import SkillFileTree from "./SkillFileTree";
 import { formatMessageTime } from "../utils/datetime";
+import { useLocalStorageMap } from "../hooks/useLocalStorageMap";
+import { isPublishedSkill } from "../utils/skills";
 
 const TITLE_KEY = "reportingagent:skill-conversation-titles";
 const SKILL_TITLE_KEY = "reportingagent:skill-display-titles";
 
-function loadStoredTitles() {
-  try {
-    return JSON.parse(localStorage.getItem(TITLE_KEY) || "{}");
-  } catch (_err) {
-    return {};
-  }
-}
+function formatSkillMarkdownForPreview(markdown) {
+  const text = String(markdown || "").replace(/^\uFEFF/, "");
+  const match = text.match(/^(\s*---\s*\r?\n)([\s\S]*?)(\r?\n\s*---\s*)(?:\r?\n)?/);
+  if (!match) return text;
 
-function saveStoredTitles(map) {
-  localStorage.setItem(TITLE_KEY, JSON.stringify(map));
-}
-
-function loadStoredSkillTitles() {
-  try {
-    return JSON.parse(localStorage.getItem(SKILL_TITLE_KEY) || "{}");
-  } catch (_err) {
-    return {};
-  }
-}
-
-function saveStoredSkillTitles(map) {
-  localStorage.setItem(SKILL_TITLE_KEY, JSON.stringify(map));
+  const yamlBody = match[2].trim();
+  const rest = text.slice(match[0].length);
+  const yamlBlock = `\`\`\`yaml\n${yamlBody}\n\`\`\``;
+  return rest.trim() ? `${yamlBlock}\n\n${rest}` : yamlBlock;
 }
 
 export default function TeachAgentModal({
   open,
+  mode = "draft",
   skills,
   skillsLoading,
   activeSkillId,
@@ -43,9 +35,12 @@ export default function TeachAgentModal({
   activeSkillConversationId,
   skillMessages,
   skillMarkdown,
+  skillFiles,
   teachInput,
   teachLoading,
   publishLoading,
+  openDraftLoading,
+  activeSkillIsPublished,
   teachStatus,
   onClose,
   onSelectSkill,
@@ -56,18 +51,26 @@ export default function TeachAgentModal({
   onTeachInput,
   onSendSkillMessage,
   onPublishSkill,
+  onOpenSkillInDraft,
 }) {
-  if (!open) return null;
-
   const [skillsSidebarHidden, setSkillsSidebarHidden] = useState(false);
   const [skillDeleteOpen, setSkillDeleteOpen] = useState(false);
-  const [skillTitles, setSkillTitles] = useState(() => loadStoredSkillTitles());
-  const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
+  const [renameConversationOpen, setRenameConversationOpen] = useState(false);
+  const [editSkillTitleOpen, setEditSkillTitleOpen] = useState(false);
+  const { map: skillTitles, setValue: setSkillTitle } = useLocalStorageMap(SKILL_TITLE_KEY);
+  const { map: conversationTitles, setValue: setConversationTitle } = useLocalStorageMap(TITLE_KEY);
   const isSkillEditingView = !!activeSkillId;
   const showExploreSidebar = !skillsSidebarHidden;
   const activeSkill = skills.find((skill) => skill.id === activeSkillId) || null;
   const activeSkillTitle = activeSkill ? (skillTitles[activeSkill.id] || "") : "";
   const safeSkillMessages = Array.isArray(skillMessages) ? skillMessages : [];
+  const safeSkillFiles = Array.isArray(skillFiles) ? skillFiles : [];
+  const previewMarkdown = useMemo(() => formatSkillMarkdownForPreview(skillMarkdown), [skillMarkdown]);
+
+  const draftSkills = useMemo(() => skills.filter((s) => !isPublishedSkill(s)), [skills]);
+  const publishedSkills = useMemo(() => skills.filter((s) => isPublishedSkill(s)), [skills]);
+  const skillsPanel = mode === "published" ? "published" : "draft";
+  const visibleSkills = skillsPanel === "published" ? publishedSkills : draftSkills;
 
   const skillConversationOptions = useMemo(() => {
     return skillConversations.map((c, idx) => {
@@ -76,6 +79,8 @@ export default function TeachAgentModal({
     });
   }, [skillConversations, conversationTitles]);
 
+  if (!open) return null;
+
   function handleCreateSkillClick() {
     setSkillsSidebarHidden(true);
     onCreateSkill();
@@ -83,48 +88,59 @@ export default function TeachAgentModal({
 
   function renameSkillConversation() {
     if (!activeSkillConversationId) return;
-    const current =
-      skillConversationOptions.find((c) => c.id === activeSkillConversationId)?.displayName || "Skill Conversation";
-    const next = window.prompt("Rename skill conversation", current);
-    if (next === null) return;
-    const value = next.trim();
-    if (!value) return;
-    const updated = { ...conversationTitles, [activeSkillConversationId]: value };
-    setConversationTitles(updated);
-    saveStoredTitles(updated);
+    setRenameConversationOpen(true);
+  }
+
+  function confirmRenameSkillConversation(value) {
+    if (!activeSkillConversationId) return;
+    setConversationTitle(activeSkillConversationId, value);
+    setRenameConversationOpen(false);
   }
 
   function editSkillTitle() {
     if (!activeSkillId) return;
-    const current = activeSkillTitle || "";
-    const next = window.prompt("Skill title", current);
-    if (next === null) return;
-    const value = next.trim();
-    const custom = { ...skillTitles };
-    if (!value) {
-      delete custom[activeSkillId];
-    } else {
-      custom[activeSkillId] = value;
-    }
-    setSkillTitles(custom);
-    saveStoredSkillTitles(custom);
+    setEditSkillTitleOpen(true);
+  }
+
+  function confirmEditSkillTitle(value) {
+    if (!activeSkillId) return;
+    setSkillTitle(activeSkillId, value);
+    setEditSkillTitleOpen(false);
   }
 
   const skillWorkspace = activeSkillId ? (
-    <div className="skill-workspace">
-      <div className="skill-markdown-panel">
+    <div className={`skill-workspace ${activeSkillIsPublished ? "published-only" : ""}`}>
+      <section className="panel skill-markdown-panel">
         <div className="panel-head sticky-head">
           <h3>Skill Preview</h3>
+          {activeSkillIsPublished ? (
+            <button className="btn-secondary skill-preview-action" onClick={onOpenSkillInDraft} disabled={openDraftLoading}>
+              {openDraftLoading ? "Opening..." : "Open in Draft"}
+            </button>
+          ) : null}
         </div>
         <div className="panel-content markdown-content">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{skillMarkdown || "# Skill markdown not published yet"}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewMarkdown || "# Skill markdown not published yet"}</ReactMarkdown>
         </div>
-      </div>
+      </section>
 
-      <div className="skill-chat-section">
-        <div className="teach-editor-info" title="Name and description are generated when publishing the skill.">
-          Name and description are generated when publishing.
-        </div>
+      {activeSkillIsPublished ? (
+        <section className="panel skill-files-panel">
+          <div className="panel-head sticky-head">
+            <h3>Skill Folder</h3>
+          </div>
+          <div className="panel-content skill-files-content">
+            {safeSkillFiles.length === 0 ? (
+              <div className="skills-empty">No files found.</div>
+            ) : (
+              <SkillFileTree paths={safeSkillFiles} />
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      {!activeSkillIsPublished ? (
+      <section className="panel skill-chat-section">
         <div className="panel-head sticky-head">
           <h3>Working Chat</h3>
           <div className="teach-actions teach-actions-left">
@@ -162,7 +178,7 @@ export default function TeachAgentModal({
             </button>
           </div>
         </div>
-        <div className="teach-chat-box">
+        <div className="panel-content teach-chat-box">
           {safeSkillMessages.length === 0 ? (
             <div className="empty-state compact">
               <Bot size={18} strokeWidth={2} aria-hidden="true" />
@@ -173,7 +189,7 @@ export default function TeachAgentModal({
               <div key={msg?.id ?? `skill-msg-${idx}`} className={`message-wrap ${msg?.role || "assistant"}`}>
                 <div className={`message ${msg?.role || "assistant"}`}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {typeof msg?.content === "string" ? msg.content : (msg?.status === "pending" ? "Thinking..." : "")}
+                    {msg?.status === "pending" ? "Thinking..." : (typeof msg?.content === "string" ? msg.content : "")}
                   </ReactMarkdown>
                 </div>
                 <div className="message-meta" title={msg?.created_at || ""}>{formatMessageTime(msg?.created_at)}</div>
@@ -185,12 +201,13 @@ export default function TeachAgentModal({
           <input
             value={teachInput}
             onChange={(e) => onTeachInput(e.target.value)}
-            placeholder="Describe or refine this skill..."
+            placeholder={activeSkillIsPublished ? "Open in Draft to modify this published skill" : "Describe or refine this skill..."}
+            disabled={activeSkillIsPublished}
             onKeyDown={(e) => {
               if (e.key === "Enter") onSendSkillMessage();
             }}
           />
-          <button className="btn-send-skill btn-primary" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
+          <button className="btn-send-skill btn-primary" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId || activeSkillIsPublished}>
             {teachLoading ? "Sending..." : "Send"}
           </button>
         </div>
@@ -198,12 +215,14 @@ export default function TeachAgentModal({
           <button
             className="btn-publish-skill btn-secondary"
             onClick={onPublishSkill}
-            disabled={publishLoading || !activeSkillConversationId}
+            disabled={publishLoading || !activeSkillConversationId || activeSkillIsPublished}
+            title="Name and description are generated when publishing the skill."
           >
-            {publishLoading ? "Publishing..." : "Publish Skill"}
+            {publishLoading ? "Publishing..." : "Publish"}
           </button>
         </div>
-      </div>
+      </section>
+      ) : null}
     </div>
   ) : null;
 
@@ -231,7 +250,7 @@ export default function TeachAgentModal({
               )}
             </button>
             <h2>
-              Teach the Agent
+              {skillsPanel === "published" ? "Skill Library" : "Teach the Agent"}
               {isSkillEditingView && activeSkill ? (
                 <>
                   : <span className="teach-title-skill">{activeSkillTitle || "Untitled Skill"}</span>
@@ -246,14 +265,14 @@ export default function TeachAgentModal({
 
         <div className="panel-content teach-modal-content">
           <div className={`teach-explore-layout ${showExploreSidebar ? "" : "sidebar-hidden"}`}>
-            <div className="skills-box skills-sidebar">
+            <aside className="sidebar skills-sidebar">
                 <div className="sidebar-head sticky-head">
                   <h3>Skills</h3>
                   <div className="sidebar-actions">
                     <button
                       className="icon-action-btn btn-ghost"
                       onClick={handleCreateSkillClick}
-                      disabled={createSkillLoading}
+                      disabled={createSkillLoading || skillsPanel === "published"}
                       title={createSkillLoading ? "Creating skill..." : "Create new skill"}
                       aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
                     >
@@ -281,14 +300,18 @@ export default function TeachAgentModal({
                 </div>
                 {skillsLoading ? (
                   <div className="skills-empty">Loading skills...</div>
-                ) : skills.length === 0 ? (
+                ) : visibleSkills.length === 0 ? (
                   <div className="empty-state compact">
                     <Sparkles size={18} strokeWidth={2} aria-hidden="true" />
-                    <p>No skills yet. Create one to start teaching the agent.</p>
+                    <p>
+                      {skillsPanel === "draft"
+                        ? "No draft skills yet. Create one to start teaching the agent."
+                        : "No skills published yet."}
+                    </p>
                   </div>
                 ) : (
                   <ul className="skills-list">
-                    {skills.map((skill) => (
+                    {visibleSkills.map((skill) => (
                       <li
                         key={skill.id}
                         className={`skills-item ${activeSkillId === skill.id ? "active" : ""}`}
@@ -300,7 +323,7 @@ export default function TeachAgentModal({
                     ))}
                   </ul>
                 )}
-            </div>
+            </aside>
             <div className="teach-explore-main">
               {isSkillEditingView ? (
                 skillWorkspace
@@ -328,6 +351,28 @@ export default function TeachAgentModal({
           await onDeleteSkill();
           setSkillDeleteOpen(false);
         }}
+      />
+
+      <PromptModal
+        open={renameConversationOpen}
+        title="Rename Skill Conversation"
+        label="Conversation name"
+        initialValue={
+          skillConversationOptions.find((c) => c.id === activeSkillConversationId)?.displayName || "Skill Conversation"
+        }
+        confirmLabel="Save"
+        onCancel={() => setRenameConversationOpen(false)}
+        onConfirm={confirmRenameSkillConversation}
+      />
+
+      <PromptModal
+        open={editSkillTitleOpen}
+        title="Edit Skill Title"
+        label="Skill title"
+        initialValue={activeSkillTitle || ""}
+        confirmLabel="Save"
+        onCancel={() => setEditSkillTitleOpen(false)}
+        onConfirm={confirmEditSkillTitle}
       />
     </div>
   );
