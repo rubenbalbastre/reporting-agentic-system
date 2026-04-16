@@ -2,7 +2,7 @@ from typing import Any
 
 from agents import Runner
 
-from app.agents.main_agent import build_main_agent
+from app.agents.reporting_agent import build_reporting_agent
 from app.utils.report_utils import (
     build_agent_input,
     ensure_report_markdown_exists,
@@ -21,9 +21,9 @@ async def run_report_conversation_turn(conversation_id: int, user_content: str) 
     ensure_report_markdown_exists(report_id)
 
     try:
-        main_agent = build_main_agent(report_id=report_id)
+        reporting_agent = build_reporting_agent(report_id=report_id)
         agent_input = build_agent_input(history_rows, user_content)
-        result = await Runner.run(main_agent, agent_input)
+        result = await Runner.run(reporting_agent, agent_input)
         assistant_content = result.final_output
     except Exception:
         assistant_content = "OpenAI request failed. Your message is stored, but I could not generate a response."

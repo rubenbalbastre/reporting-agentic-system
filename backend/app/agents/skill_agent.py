@@ -3,10 +3,10 @@ import requests
 from agents import Agent, function_tool
 from opentelemetry.propagate import inject
 
-from app.agents.prompts import build_main_skill_agent_instructions
+from app.agents.prompts import build_skill_agent_instructions
 
 
-def build_main_skill_agent(skill_session_id: str, workspace_path: str | None = None) -> Agent:
+def build_skill_agent(skill_session_id: str, workspace_path: str | None = None) -> Agent:
     @function_tool
     def call_skill_code_worker(content: str) -> str:
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
@@ -31,8 +31,8 @@ def build_main_skill_agent(skill_session_id: str, workspace_path: str | None = N
             return f"Skill code worker request failed: {exc}"
 
     return Agent(
-        name="main_skill_agent",
-        instructions=build_main_skill_agent_instructions(),
+        name="skill_agent",
+        instructions=build_skill_agent_instructions(),
         model="gpt-5.4-mini",
         tools=[call_skill_code_worker],
     )
