@@ -1,5 +1,6 @@
 import os
 import mimetypes
+import re
 from typing import List
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,6 +12,7 @@ from app.schemas import (
     Conversation,
     Message,
     CreateReportRequest,
+    UpdateReportTitleRequest,
     CreateMessageRequest,
     TeachAgentRequest,
     TeachAgentResponse,
@@ -132,6 +134,29 @@ def create_report(payload: CreateReportRequest) -> Report:
     return report
 
 
+@app.post("/reports/{report_id}/title", response_model=Report)
+def update_report_title(report_id: int, payload: UpdateReportTitleRequest) -> Report:
+    title = payload.title.strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Report title is required")
+
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            ensure_report_exists(cur, report_id)
+            cur.execute(
+                """
+                UPDATE reports
+                SET title = %s
+                WHERE id = %s
+                RETURNING id, title, created_at;
+                """,
+                (title, report_id),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    return Report(**row)
+
+
 @app.delete("/reports/{report_id}", status_code=204)
 def delete_report(report_id: int) -> None:
     with get_db_connection() as conn:
@@ -207,13 +232,19 @@ def get_report_markdown(report_id: int) -> dict[str, str]:
 
 @app.get("/reports/{report_id}/pdf")
 async def export_report_pdf(report_id: int):
+    report_title = f"report_{report_id}"
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            ensure_report_exists(cur, report_id)
+            cur.execute("SELECT id, title FROM reports WHERE id = %s;", (report_id,))
+            row = cur.fetchone()
+            if row is None:
+                raise HTTPException(status_code=404, detail="Report not found")
+            report_title = row["title"] or report_title
 
     pdf_bytes = await render_report_pdf_bytes(report_id)
 
-    filename = f"report_{report_id}.pdf"
+    safe_title = re.sub(r"[^A-Za-z0-9._-]+", "_", report_title).strip("._-")
+    filename = f"{safe_title or f'report_{report_id}'}.pdf"
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",

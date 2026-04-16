@@ -106,6 +106,24 @@ export function useReportChat() {
     setActiveConversationId(data.id);
   }
 
+  async function renameReport() {
+    if (!activeReportId) return;
+    const active = reports.find((r) => r.id === activeReportId);
+    const currentTitle = active?.title || "";
+    const nextTitle = window.prompt("New report name", currentTitle);
+    if (nextTitle === null) return;
+    const title = nextTitle.trim();
+    if (!title || title === currentTitle) return;
+
+    const { ok, data } = await api.post(`/reports/${activeReportId}/title`, { title });
+    if (!ok) {
+      alert(data.detail || "Failed to rename report");
+      return;
+    }
+
+    setReports((prev) => prev.map((r) => (r.id === activeReportId ? { ...r, title: data.title } : r)));
+  }
+
   async function deleteReport() {
     if (!activeReportId || deleteReportLoading) return;
     setDeleteReportLoading(true);
@@ -184,6 +202,7 @@ export function useReportChat() {
     viewMode,
     setViewMode,
     createReport,
+    renameReport,
     deleteReport,
     deleteReportLoading,
     exportReportPdf,

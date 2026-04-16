@@ -63,6 +63,15 @@ export default function App() {
                   +
                 </button>
                 <button
+                  className="icon-action-btn"
+                  onClick={report.renameReport}
+                  disabled={!report.activeReportId}
+                  title="Rename report"
+                  aria-label="Rename report"
+                >
+                  ✎
+                </button>
+                <button
                   className="btn-delete-report icon-danger-btn"
                   onClick={() => {
                     if (!report.activeReportId) return;
