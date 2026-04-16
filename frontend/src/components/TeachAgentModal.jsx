@@ -1,6 +1,36 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Bot, Eye, EyeOff, Pencil, Plus, Sparkles, SquarePen, Trash2 } from "lucide-react";
+import ConfirmModal from "./ConfirmModal";
+import { formatMessageTime } from "../utils/datetime";
+
+const TITLE_KEY = "reportingagent:skill-conversation-titles";
+const SKILL_TITLE_KEY = "reportingagent:skill-display-titles";
+
+function loadStoredTitles() {
+  try {
+    return JSON.parse(localStorage.getItem(TITLE_KEY) || "{}");
+  } catch (_err) {
+    return {};
+  }
+}
+
+function saveStoredTitles(map) {
+  localStorage.setItem(TITLE_KEY, JSON.stringify(map));
+}
+
+function loadStoredSkillTitles() {
+  try {
+    return JSON.parse(localStorage.getItem(SKILL_TITLE_KEY) || "{}");
+  } catch (_err) {
+    return {};
+  }
+}
+
+function saveStoredSkillTitles(map) {
+  localStorage.setItem(SKILL_TITLE_KEY, JSON.stringify(map));
+}
 
 export default function TeachAgentModal({
   open,
@@ -30,19 +60,59 @@ export default function TeachAgentModal({
   if (!open) return null;
 
   const [skillsSidebarHidden, setSkillsSidebarHidden] = useState(false);
+  const [skillDeleteOpen, setSkillDeleteOpen] = useState(false);
+  const [skillTitles, setSkillTitles] = useState(() => loadStoredSkillTitles());
+  const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
   const isSkillEditingView = !!activeSkillId;
   const showExploreSidebar = !skillsSidebarHidden;
   const activeSkill = skills.find((skill) => skill.id === activeSkillId) || null;
+  const activeSkillTitle = activeSkill ? (skillTitles[activeSkill.id] || "") : "";
+
+  const skillConversationOptions = useMemo(() => {
+    return skillConversations.map((c, idx) => {
+      const fallback = c.title || `Skill Conversation ${idx + 1}`;
+      return { ...c, displayName: conversationTitles[c.id] || fallback };
+    });
+  }, [skillConversations, conversationTitles]);
 
   function handleCreateSkillClick() {
     setSkillsSidebarHidden(true);
     onCreateSkill();
   }
 
+  function renameSkillConversation() {
+    if (!activeSkillConversationId) return;
+    const current =
+      skillConversationOptions.find((c) => c.id === activeSkillConversationId)?.displayName || "Skill Conversation";
+    const next = window.prompt("Rename skill conversation", current);
+    if (next === null) return;
+    const value = next.trim();
+    if (!value) return;
+    const updated = { ...conversationTitles, [activeSkillConversationId]: value };
+    setConversationTitles(updated);
+    saveStoredTitles(updated);
+  }
+
+  function editSkillTitle() {
+    if (!activeSkillId) return;
+    const current = activeSkillTitle || "";
+    const next = window.prompt("Skill title", current);
+    if (next === null) return;
+    const value = next.trim();
+    const custom = { ...skillTitles };
+    if (!value) {
+      delete custom[activeSkillId];
+    } else {
+      custom[activeSkillId] = value;
+    }
+    setSkillTitles(custom);
+    saveStoredSkillTitles(custom);
+  }
+
   const skillWorkspace = activeSkillId ? (
     <div className="skill-workspace">
       <div className="skill-markdown-panel">
-        <div className="panel-head">
+        <div className="panel-head sticky-head">
           <h3>Skill Preview</h3>
         </div>
         <div className="panel-content markdown-content">
@@ -54,7 +124,7 @@ export default function TeachAgentModal({
         <div className="teach-editor-info" title="Name and description are generated when publishing the skill.">
           Name and description are generated when publishing.
         </div>
-        <div className="panel-head">
+        <div className="panel-head sticky-head">
           <h3>Working Chat</h3>
           <div className="teach-actions teach-actions-left">
             <select
@@ -65,28 +135,48 @@ export default function TeachAgentModal({
               {skillConversations.length === 0 ? (
                 <option value="">No conversations</option>
               ) : (
-                skillConversations.map((c) => (
+                skillConversationOptions.map((c) => (
                   <option key={c.id} value={c.id}>
-                    Skill Conversation #{c.id}
+                    {c.displayName}
                   </option>
                 ))
               )}
             </select>
             <button
+              className="icon-action-btn btn-ghost"
+              onClick={renameSkillConversation}
+              disabled={!activeSkillConversationId}
+              title="Rename skill conversation"
+              aria-label="Rename skill conversation"
+            >
+              <SquarePen size={16} strokeWidth={2} aria-hidden="true" />
+            </button>
+            <button
+              className="icon-action-btn btn-ghost"
               onClick={onCreateSkillConversation}
               title="New skill conversation"
               aria-label="New skill conversation"
             >
-              <span role="img" aria-hidden="true">✏️</span>
+              <Pencil size={16} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
         </div>
         <div className="teach-chat-box">
-          {skillMessages.map((msg) => (
-            <div key={msg.id} className={`message ${msg.role}`}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
+          {skillMessages.length === 0 ? (
+            <div className="empty-state compact">
+              <Bot size={18} strokeWidth={2} aria-hidden="true" />
+              <p>Describe the skill goal and constraints. Then iterate with examples, edge cases, and expected outputs.</p>
             </div>
-          ))}
+          ) : (
+            skillMessages.map((msg) => (
+              <div key={msg.id} className={`message-wrap ${msg.role}`}>
+                <div className={`message ${msg.role}`}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || (msg.status === "pending" ? "Thinking..." : "")}</ReactMarkdown>
+                </div>
+                <div className="message-meta">{formatTime(msg.created_at)}</div>
+              </div>
+            ))
+          )}
         </div>
         <div className="chat-input">
           <input
@@ -97,13 +187,13 @@ export default function TeachAgentModal({
               if (e.key === "Enter") onSendSkillMessage();
             }}
           />
-          <button className="btn-send-skill" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
+          <button className="btn-send-skill btn-primary" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
             {teachLoading ? "Sending..." : "Send"}
           </button>
         </div>
         <div className="teach-actions">
           <button
-            className="btn-publish-skill"
+            className="btn-publish-skill btn-secondary"
             onClick={onPublishSkill}
             disabled={publishLoading || !activeSkillConversationId}
           >
@@ -126,62 +216,73 @@ export default function TeachAgentModal({
         <div className="panel-head">
           <div className="teach-head-left">
             <button
-              className="icon-action-btn skill-toggle-btn"
+              className="icon-action-btn skill-toggle-btn btn-ghost"
               onClick={() => setSkillsSidebarHidden((v) => !v)}
               title={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
               aria-label={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
             >
-              <span role="img" aria-hidden="true">🛠️</span>
+              {skillsSidebarHidden ? (
+                <Eye size={16} strokeWidth={2} aria-hidden="true" />
+              ) : (
+                <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
+              )}
             </button>
             <h2>
               Teach the Agent
               {isSkillEditingView && activeSkill ? (
                 <>
-                  : <span className="teach-title-skill">Skill {activeSkill.name}</span>
+                  : <span className="teach-title-skill">{activeSkillTitle || "Untitled Skill"}</span>
                 </>
               ) : null}
             </h2>
           </div>
           <div className="teach-header-actions">
-            <button onClick={onClose}>Close</button>
+            <button className="btn-ghost" onClick={onClose}>Close</button>
           </div>
         </div>
 
         <div className="panel-content teach-modal-content">
           <div className={`teach-explore-layout ${showExploreSidebar ? "" : "sidebar-hidden"}`}>
-            {showExploreSidebar && (
-              <div className="skills-box skills-sidebar">
-                <div className="sidebar-head">
+            <div className="skills-box skills-sidebar">
+                <div className="sidebar-head sticky-head">
                   <h3>Skills</h3>
                   <div className="sidebar-actions">
                     <button
-                      className="icon-action-btn"
+                      className="icon-action-btn btn-ghost"
                       onClick={handleCreateSkillClick}
                       disabled={createSkillLoading}
                       title={createSkillLoading ? "Creating skill..." : "Create new skill"}
                       aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
                     >
-                      {createSkillLoading ? "…" : "+"}
+                      {createSkillLoading ? "…" : <Plus size={16} strokeWidth={2} aria-hidden="true" />}
+                    </button>
+                    <button
+                      className="icon-action-btn btn-ghost"
+                      onClick={editSkillTitle}
+                      disabled={!isSkillEditingView}
+                      title="Edit skill title"
+                      aria-label="Edit skill title"
+                    >
+                      <SquarePen size={16} strokeWidth={2} aria-hidden="true" />
                     </button>
                     <button
                       className="btn-delete-skill icon-danger-btn"
-                      onClick={() => {
-                        if (!isSkillEditingView) return;
-                        const confirmed = window.confirm("Delete this skill and all its skill conversations?");
-                        if (confirmed) onDeleteSkill();
-                      }}
+                      onClick={() => setSkillDeleteOpen(true)}
                       disabled={!isSkillEditingView || deleteSkillLoading}
                       title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
                       aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
                     >
-                      {deleteSkillLoading ? "…" : "🗑"}
+                      {deleteSkillLoading ? "…" : <Trash2 size={16} strokeWidth={2} aria-hidden="true" />}
                     </button>
                   </div>
                 </div>
                 {skillsLoading ? (
                   <div className="skills-empty">Loading skills...</div>
                 ) : skills.length === 0 ? (
-                  <div className="skills-empty">No skills found yet.</div>
+                  <div className="empty-state compact">
+                    <Sparkles size={18} strokeWidth={2} aria-hidden="true" />
+                    <p>No skills yet. Create one to start teaching the agent.</p>
+                  </div>
                 ) : (
                   <ul className="skills-list">
                     {skills.map((skill) => (
@@ -190,22 +291,41 @@ export default function TeachAgentModal({
                         className={`skills-item ${activeSkillId === skill.id ? "active" : ""}`}
                         onClick={() => onSelectSkill(skill.id)}
                       >
-                        <div className="skills-item-name">{skill.name}</div>
-                        <div className="skills-item-desc">{skill.description || "No description yet (publish to generate)"}</div>
+                        <div className="skills-item-name">{skillTitles[skill.id] || "Untitled Skill"}</div>
+                        <div className="skills-item-desc">Name: {skill.name}</div>
                       </li>
                     ))}
                   </ul>
                 )}
-              </div>
-            )}
+            </div>
             <div className="teach-explore-main">
-              {isSkillEditingView ? skillWorkspace : <div className="skills-empty skill-empty-state">Select a skill or create a new one.</div>}
+              {isSkillEditingView ? (
+                skillWorkspace
+              ) : (
+                <div className="empty-state skill-empty-state">
+                  <Bot size={18} strokeWidth={2} aria-hidden="true" />
+                  <p>Select a skill or create a new one to begin.</p>
+                </div>
+              )}
             </div>
           </div>
 
           {teachStatus && <div className={`teach-status ${teachStatus.type}`}>{teachStatus.text}</div>}
         </div>
       </section>
+
+      <ConfirmModal
+        open={skillDeleteOpen}
+        title="Delete Skill"
+        message="Delete this skill and all its skill conversations?"
+        confirmLabel="Delete Skill"
+        loading={deleteSkillLoading}
+        onCancel={() => setSkillDeleteOpen(false)}
+        onConfirm={async () => {
+          await onDeleteSkill();
+          setSkillDeleteOpen(false);
+        }}
+      />
     </div>
   );
 }

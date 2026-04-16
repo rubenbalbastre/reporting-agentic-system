@@ -7,7 +7,7 @@ export const VIEW = {
   CHAT: "chat",
 };
 
-export function useReportChat() {
+export function useReportChat(toast) {
   const [reports, setReports] = useState([]);
   const [activeReportId, setActiveReportId] = useState(null);
   const [conversations, setConversations] = useState([]);
@@ -79,6 +79,7 @@ export function useReportChat() {
     const { ok, data } = await api.get(`/reports/${reportId}/markdown`);
     if (!ok) {
       setMarkdown("# Failed to load report preview");
+      toast?.error("Failed to load report preview");
       return;
     }
     setMarkdown(data.content || "");
@@ -87,23 +88,35 @@ export function useReportChat() {
   async function createReport() {
     const title = `Report ${reports.length + 1}`;
     const { ok, data } = await api.post("/reports", { title });
-    if (!ok) return;
+    if (!ok) {
+      toast?.error("Failed to create report");
+      return;
+    }
     await loadReports();
     setActiveReportId(data.id);
     const convs = await loadConversations(data.id);
-    if (convs.length) setActiveConversationId(convs[0].id);
+    if (!convs.length) {
+      const newConv = await api.post(`/reports/${data.id}/conversations`);
+      if (newConv.ok && newConv.data?.id) {
+        setActiveConversationId(newConv.data.id);
+      }
+    } else {
+      setActiveConversationId(convs[0].id);
+    }
     await loadReportMarkdown(data.id);
+    toast?.success("Report created");
   }
 
   async function createConversation() {
     if (!activeReportId) return;
     const { ok, data } = await api.post(`/reports/${activeReportId}/conversations`);
     if (!ok) {
-      alert(data.detail || "Failed to create conversation");
+      toast?.error(data.detail || "Failed to create conversation");
       return;
     }
     await loadConversations(activeReportId);
     setActiveConversationId(data.id);
+    toast?.success("Conversation created");
   }
 
   async function renameReport() {
@@ -117,11 +130,12 @@ export function useReportChat() {
 
     const { ok, data } = await api.post(`/reports/${activeReportId}/title`, { title });
     if (!ok) {
-      alert(data.detail || "Failed to rename report");
+      toast?.error(data.detail || "Failed to rename report");
       return;
     }
 
     setReports((prev) => prev.map((r) => (r.id === activeReportId ? { ...r, title: data.title } : r)));
+    toast?.success("Report renamed");
   }
 
   async function deleteReport() {
@@ -131,16 +145,18 @@ export function useReportChat() {
       const deletingId = activeReportId;
       const { ok } = await api.del(`/reports/${deletingId}`);
       if (!ok) {
-        alert("Failed to delete report");
+        toast?.error("Failed to delete report");
         return;
       }
       const list = await loadReports();
       if (!list.length) {
         resetReportSelection();
+        toast?.success("Report deleted");
         return;
       }
       const next = list.find((r) => r.id !== deletingId) || list[0];
       setActiveReportId(next.id);
+      toast?.success("Report deleted");
     } finally {
       setDeleteReportLoading(false);
     }
@@ -149,6 +165,7 @@ export function useReportChat() {
   function exportReportPdf() {
     if (!activeReportId) return;
     window.open(`${api.API_BASE}/reports/${activeReportId}/pdf`, "_blank", "noopener,noreferrer");
+    toast?.info("Export started");
   }
 
   async function sendMessage() {
@@ -160,26 +177,25 @@ export function useReportChat() {
     setInput("");
     setMessages((prev) => [
       ...prev,
-      { id: tempUserId, role: "user", content },
-      { id: tempAssistantId, role: "assistant", content: "", status: "pending" },
+      { id: tempUserId, role: "user", content, created_at: new Date().toISOString() },
+      { id: tempAssistantId, role: "assistant", content: "", status: "pending", created_at: new Date().toISOString() },
     ]);
 
     const { ok, data } = await api.post(`/conversations/${conversationId}/messages`, { content });
     await loadMessages(conversationId);
     await loadReportMarkdown(activeReportId);
-    if (!ok) alert(data.detail || "Failed to send message");
+    if (!ok) toast?.error(data.detail || "Failed to send message");
   }
 
   const showReportPanel = useMemo(() => viewMode !== VIEW.CHAT, [viewMode]);
   const showChatPanel = useMemo(() => viewMode !== VIEW.REPORT, [viewMode]);
 
   const layoutClassName = useMemo(() => {
-    const withSidebar = sidebarVisible ? "with-sidebar" : "no-sidebar";
-    if (showReportPanel && showChatPanel) return `layout ${withSidebar} two-panels`;
-    if (showReportPanel) return `layout ${withSidebar} report-only`;
-    if (showChatPanel) return `layout ${withSidebar} chat-only`;
-    return `layout ${withSidebar} empty`;
-  }, [sidebarVisible, showReportPanel, showChatPanel]);
+    if (showReportPanel && showChatPanel) return "layout two-panels";
+    if (showReportPanel) return "layout report-only";
+    if (showChatPanel) return "layout chat-only";
+    return "layout empty";
+  }, [showReportPanel, showChatPanel]);
 
   const activeReportTitle = useMemo(() => {
     const active = reports.find((r) => r.id === activeReportId);

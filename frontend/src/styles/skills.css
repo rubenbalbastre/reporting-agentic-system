@@ -1,61 +1,62 @@
 .modal-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.25);
+  background: rgba(15, 23, 42, 0.2);
   display: grid;
   place-items: center;
-  padding: 16px;
+  padding: var(--space-4);
   z-index: 50;
+  animation: fade-in 220ms ease;
 }
 
 .teach-modal {
   width: 96vw;
   height: 94vh;
   overflow: hidden;
-  border-radius: 20px;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--line);
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.2);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: var(--shadow-2);
   display: flex;
   flex-direction: column;
+  animation: modal-rise 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .teach-header-actions {
   display: flex;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .teach-head-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-width: 0;
 }
 
-.teach-title-skill {
-  color: #0071e3;
-}
+.teach-title-skill { color: var(--accent); }
 
 .teach-modal-content {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-4);
   min-height: 0;
   overflow: hidden;
 }
 
 .skills-box {
   border: 1px solid var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.82);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.84);
   padding: 10px 12px;
 }
 
 .skills-box h3 {
   margin: 0 0 8px;
-  font-size: 18px;
+  font-size: 17px;
+  letter-spacing: -0.01em;
 }
 
 .skills-list {
@@ -71,14 +72,15 @@
 
 .skills-item {
   border: 1px solid var(--line);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   padding: 8px 10px;
-  background: rgba(248, 250, 252, 0.9);
+  background: rgba(255, 255, 255, 0.92);
   cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
 }
 
 .skills-item.active {
-  border-color: rgba(0, 113, 227, 0.4);
+  border-color: rgba(0, 113, 227, 0.34);
   background: rgba(0, 113, 227, 0.08);
 }
 
@@ -100,37 +102,42 @@
 
 .skill-empty-state {
   height: 100%;
-  display: grid;
-  place-items: center;
-  border: 1px dashed var(--line);
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
 }
 
 .teach-explore-layout {
+  --skills-sidebar-width: 280px;
   display: grid;
-  grid-template-columns: 280px 1fr;
-  gap: 12px;
+  grid-template-columns: var(--skills-sidebar-width) 1fr;
+  gap: var(--space-4);
   flex: 1;
   height: 100%;
   min-height: 0;
   overflow: hidden;
+  transition: grid-template-columns 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .teach-explore-layout.sidebar-hidden {
-  grid-template-columns: 1fr;
+  --skills-sidebar-width: 0px;
 }
 
 .skills-box.skills-sidebar {
   display: flex;
   flex-direction: column;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
+  transition: opacity 180ms ease, transform 260ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .skills-box.skills-sidebar .skills-list {
   max-height: none;
   flex: 1;
+}
+
+.teach-explore-layout.sidebar-hidden .skills-box.skills-sidebar {
+  opacity: 0;
+  transform: translateX(-8px);
+  pointer-events: none;
 }
 
 .teach-explore-main {
@@ -142,7 +149,7 @@
 .teach-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
+  gap: var(--space-2);
   flex-shrink: 0;
 }
 
@@ -151,11 +158,7 @@
 }
 
 .teach-actions select {
-  min-width: 220px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.88);
+  min-width: 240px;
 }
 
 .teach-chat-box {
@@ -164,9 +167,14 @@
   overflow: auto;
   display: flex;
   flex-direction: column;
-  gap: 7px;
+  gap: 10px;
   padding-left: 12px;
   padding-right: 12px;
+}
+
+.teach-chat-box > .empty-state {
+  flex: 1;
+  min-height: 100%;
 }
 
 .skill-chat-section {
@@ -183,12 +191,27 @@
   font-size: 16px;
 }
 
+.skill-chat-section .message-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-chat-section .message-wrap.user { align-items: flex-end; }
+.skill-chat-section .message-wrap.assistant { align-items: flex-start; }
+
+.skill-chat-section .message-meta {
+  font-size: 11px;
+  color: #8e8e93;
+  padding: 0 2px;
+}
+
 .teach-editor-info {
   align-self: flex-start;
   font-size: 12px;
-  color: #0f4c81;
-  background: rgba(14, 165, 233, 0.12);
-  border: 1px solid rgba(14, 165, 233, 0.22);
+  color: #114d83;
+  background: rgba(0, 113, 227, 0.1);
+  border: 1px solid rgba(0, 113, 227, 0.24);
   border-radius: 999px;
   padding: 4px 10px;
 }
@@ -196,7 +219,7 @@
 .skill-workspace {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  gap: var(--space-4);
   height: 100%;
   min-height: 0;
   overflow: hidden;
@@ -204,8 +227,8 @@
 
 .skill-markdown-panel {
   border: 1px solid var(--line);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.86);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.9);
   height: 100%;
   min-height: 0;
   display: flex;
@@ -224,23 +247,21 @@
   padding-top: 12px;
 }
 
-.btn-send-skill {
-  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
-  color: #ffffff;
-  border-color: transparent;
+.sticky-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.84);
 }
 
-.btn-publish-skill {
-  background: linear-gradient(180deg, #f59e0b 0%, #d97706 100%);
-  color: #ffffff;
-  border-color: transparent;
+.btn-send-skill:hover:not(:disabled),
+.btn-publish-skill:hover:not(:disabled) {
+  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
 }
 
-.btn-delete-skill {
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
-  border-color: transparent;
-}
+.btn-delete-skill { color: var(--danger); }
 
 .skill-toggle-btn {
   background: rgba(255, 255, 255, 0.92);
@@ -264,6 +285,22 @@
   color: #991b1b;
   background: rgba(220, 38, 38, 0.1);
   border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (max-width: 1080px) {

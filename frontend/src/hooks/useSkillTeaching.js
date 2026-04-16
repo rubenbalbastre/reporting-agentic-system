@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 
-export function useSkillTeaching() {
+export function useSkillTeaching(toast) {
   const [teachModalOpen, setTeachModalOpen] = useState(false);
   const [teachInput, setTeachInput] = useState("");
   const [teachStatus, setTeachStatus] = useState(null);
@@ -27,7 +27,9 @@ export function useSkillTeaching() {
   }
 
   function setErrorStatus(defaultMessage, detail) {
-    setTeachStatus({ type: "error", text: detail || defaultMessage });
+    const text = detail || defaultMessage;
+    setTeachStatus({ type: "error", text });
+    toast?.error(text);
   }
 
   async function withLoading(setLoading, task) {
@@ -88,10 +90,18 @@ export function useSkillTeaching() {
           return;
         }
         setTeachStatus({ type: "success", text: `Created skill ${data.name}` });
+        toast?.success(`Created skill ${data.name}`);
         await loadSkills();
         setActiveSkillId(data.id);
         const convs = await loadSkillConversations(data.id);
-        if (convs.length) setActiveSkillConversationId(convs[0].id);
+        if (!convs.length) {
+          const newConv = await api.post(`/skills/${data.id}/conversations`);
+          if (newConv.ok && newConv.data?.id) {
+            setActiveSkillConversationId(newConv.data.id);
+          }
+        } else {
+          setActiveSkillConversationId(convs[0].id);
+        }
       } catch (_err) {
         setErrorStatus(
           "Could not reach backend. Check backend is running on :8000 and DB schema is up to date (make db-init).",
@@ -111,6 +121,7 @@ export function useSkillTeaching() {
           return;
         }
         setTeachStatus({ type: "success", text: "Skill deleted" });
+        toast?.success("Skill deleted");
         resetActiveSkillState();
         await loadSkills();
       } catch (_err) {
@@ -138,6 +149,7 @@ export function useSkillTeaching() {
     }
     await loadSkillConversations(activeSkillId);
     setActiveSkillConversationId(data.id);
+    toast?.success("Skill conversation created");
   }
 
   async function loadSkillMessages(skillConversationId) {
@@ -159,6 +171,11 @@ export function useSkillTeaching() {
     const content = teachInput.trim();
     setTeachStatus(null);
     setTeachInput("");
+    setSkillMessages((prev) => [
+      ...prev,
+      { id: `tmp-su-${Date.now()}`, role: "user", content, created_at: new Date().toISOString() },
+      { id: `tmp-sa-${Date.now()}`, role: "assistant", content: "", status: "pending", created_at: new Date().toISOString() },
+    ]);
     await withLoading(setTeachLoading, async () => {
       try {
         const { ok, data } = await api.post(`/skill-conversations/${activeSkillConversationId}/messages`, { content });
@@ -186,6 +203,7 @@ export function useSkillTeaching() {
           return;
         }
         setTeachStatus({ type: "success", text: `Published ${data.name}` });
+        toast?.success(`Published ${data.name}`);
         await loadSkills();
         await loadSkillMarkdown(activeSkillId);
       } catch (_err) {
