@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../api";
 
 export const VIEW = {
@@ -119,13 +119,11 @@ export function useReportChat(toast) {
     toast?.success("Conversation created");
   }
 
-  async function renameReport() {
+  async function renameReport(nextTitle) {
     if (!activeReportId) return;
     const active = reports.find((r) => r.id === activeReportId);
     const currentTitle = active?.title || "";
-    const nextTitle = window.prompt("New report name", currentTitle);
-    if (nextTitle === null) return;
-    const title = nextTitle.trim();
+    const title = String(nextTitle || "").trim();
     if (!title || title === currentTitle) return;
 
     const { ok, data } = await api.post(`/reports/${activeReportId}/title`, { title });
@@ -187,20 +185,20 @@ export function useReportChat(toast) {
     if (!ok) toast?.error(data.detail || "Failed to send message");
   }
 
-  const showReportPanel = useMemo(() => viewMode !== VIEW.CHAT, [viewMode]);
-  const showChatPanel = useMemo(() => viewMode !== VIEW.REPORT, [viewMode]);
+  const showReportPanel = viewMode !== VIEW.CHAT;
+  const showChatPanel = viewMode !== VIEW.REPORT;
 
-  const layoutClassName = useMemo(() => {
+  const layoutClassName = (() => {
     if (showReportPanel && showChatPanel) return "layout two-panels";
     if (showReportPanel) return "layout report-only";
     if (showChatPanel) return "layout chat-only";
     return "layout empty";
-  }, [showReportPanel, showChatPanel]);
+  })();
 
-  const activeReportTitle = useMemo(() => {
+  const activeReportTitle = (() => {
     const active = reports.find((r) => r.id === activeReportId);
     return active?.title || null;
-  }, [reports, activeReportId]);
+  })();
 
   return {
     reports,

@@ -5,6 +5,7 @@ import { useState } from "react";
 import ReportChatPanel from "./components/ReportChatPanel";
 import TeachAgentModal from "./components/TeachAgentModal";
 import ConfirmModal from "./components/ConfirmModal";
+import PromptModal from "./components/PromptModal";
 import ToastStack from "./components/ToastStack";
 import { api } from "./api";
 import { useReportChat, VIEW } from "./hooks/useReportChat";
@@ -14,6 +15,7 @@ import { useToast } from "./hooks/useToast";
 export default function App() {
   const { toasts, toast } = useToast();
   const [reportDeleteOpen, setReportDeleteOpen] = useState(false);
+  const [renameReportOpen, setRenameReportOpen] = useState(false);
   const report = useReportChat(toast);
   const skill = useSkillTeaching(toast);
 
@@ -109,7 +111,7 @@ export default function App() {
               </button>
               <button
                 className="icon-action-btn btn-ghost"
-                onClick={report.renameReport}
+                onClick={() => setRenameReportOpen(true)}
                 disabled={!report.activeReportId}
                 title="Rename report"
                 aria-label="Rename report"
@@ -227,6 +229,19 @@ export default function App() {
         onConfirm={async () => {
           await report.deleteReport();
           setReportDeleteOpen(false);
+        }}
+      />
+
+      <PromptModal
+        open={renameReportOpen}
+        title="Rename Report"
+        label="Report name"
+        initialValue={report.activeReportTitle || ""}
+        confirmLabel="Save"
+        onCancel={() => setRenameReportOpen(false)}
+        onConfirm={async (value) => {
+          await report.renameReport(value);
+          setRenameReportOpen(false);
         }}
       />
 

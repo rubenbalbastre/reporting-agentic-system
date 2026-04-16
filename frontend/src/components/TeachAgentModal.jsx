@@ -5,33 +5,11 @@ import { Bot, Eye, EyeOff, FileText, Folder, Pencil, Plus, Sparkles, SquarePen, 
 import ConfirmModal from "./ConfirmModal";
 import PromptModal from "./PromptModal";
 import { formatMessageTime } from "../utils/datetime";
+import { useLocalStorageMap } from "../hooks/useLocalStorageMap";
+import { isPublishedSkill } from "../utils/skills";
 
 const TITLE_KEY = "reportingagent:skill-conversation-titles";
 const SKILL_TITLE_KEY = "reportingagent:skill-display-titles";
-
-function loadStoredTitles() {
-  try {
-    return JSON.parse(localStorage.getItem(TITLE_KEY) || "{}");
-  } catch (_err) {
-    return {};
-  }
-}
-
-function saveStoredTitles(map) {
-  localStorage.setItem(TITLE_KEY, JSON.stringify(map));
-}
-
-function loadStoredSkillTitles() {
-  try {
-    return JSON.parse(localStorage.getItem(SKILL_TITLE_KEY) || "{}");
-  } catch (_err) {
-    return {};
-  }
-}
-
-function saveStoredSkillTitles(map) {
-  localStorage.setItem(SKILL_TITLE_KEY, JSON.stringify(map));
-}
 
 function buildTree(paths) {
   const root = { name: "", path: "", type: "dir", children: new Map() };
@@ -123,14 +101,12 @@ export default function TeachAgentModal({
   onPublishSkill,
   onOpenSkillInDraft,
 }) {
-  if (!open) return null;
-
   const [skillsSidebarHidden, setSkillsSidebarHidden] = useState(false);
   const [skillDeleteOpen, setSkillDeleteOpen] = useState(false);
   const [renameConversationOpen, setRenameConversationOpen] = useState(false);
   const [editSkillTitleOpen, setEditSkillTitleOpen] = useState(false);
-  const [skillTitles, setSkillTitles] = useState(() => loadStoredSkillTitles());
-  const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
+  const { map: skillTitles, setValue: setSkillTitle } = useLocalStorageMap(SKILL_TITLE_KEY);
+  const { map: conversationTitles, setValue: setConversationTitle } = useLocalStorageMap(TITLE_KEY);
   const isSkillEditingView = !!activeSkillId;
   const showExploreSidebar = !skillsSidebarHidden;
   const activeSkill = skills.find((skill) => skill.id === activeSkillId) || null;
@@ -139,15 +115,12 @@ export default function TeachAgentModal({
   const safeSkillFiles = Array.isArray(skillFiles) ? skillFiles : [];
   const skillFilesTree = useMemo(() => buildTree(safeSkillFiles), [safeSkillFiles]);
 
-  const isPublished = (skill) => {
-    const path = (skill?.skill_md_path || "").toLowerCase();
-    return path.includes("/skills/") && !path.includes("/skills_drafts/");
-  };
-
-  const draftSkills = useMemo(() => skills.filter((s) => !isPublished(s)), [skills]);
-  const publishedSkills = useMemo(() => skills.filter((s) => isPublished(s)), [skills]);
+  const draftSkills = useMemo(() => skills.filter((s) => !isPublishedSkill(s)), [skills]);
+  const publishedSkills = useMemo(() => skills.filter((s) => isPublishedSkill(s)), [skills]);
   const skillsPanel = mode === "published" ? "published" : "draft";
   const visibleSkills = skillsPanel === "published" ? publishedSkills : draftSkills;
+
+  if (!open) return null;
 
   function handleSelectSkill(skillId) {
     onSelectSkill(skillId);
@@ -172,9 +145,7 @@ export default function TeachAgentModal({
 
   function confirmRenameSkillConversation(value) {
     if (!activeSkillConversationId) return;
-    const updated = { ...conversationTitles, [activeSkillConversationId]: value };
-    setConversationTitles(updated);
-    saveStoredTitles(updated);
+    setConversationTitle(activeSkillConversationId, value);
     setRenameConversationOpen(false);
   }
 
@@ -185,14 +156,7 @@ export default function TeachAgentModal({
 
   function confirmEditSkillTitle(value) {
     if (!activeSkillId) return;
-    const custom = { ...skillTitles };
-    if (!value) {
-      delete custom[activeSkillId];
-    } else {
-      custom[activeSkillId] = value;
-    }
-    setSkillTitles(custom);
-    saveStoredSkillTitles(custom);
+    setSkillTitle(activeSkillId, value);
     setEditSkillTitleOpen(false);
   }
 
