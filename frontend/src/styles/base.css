@@ -173,14 +173,14 @@ h2 {
 .markdown-content table,
 .message table {
   width: 100%;
+  min-width: 100%;
   border-collapse: collapse;
-  display: block;
-  overflow-x: auto;
-  white-space: nowrap;
+  display: table;
   margin: 12px 0;
   border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   background: var(--bg-solid);
+  table-layout: auto;
 }
 
 .markdown-content th,

@@ -67,6 +67,7 @@ export default function TeachAgentModal({
   const showExploreSidebar = !skillsSidebarHidden;
   const activeSkill = skills.find((skill) => skill.id === activeSkillId) || null;
   const activeSkillTitle = activeSkill ? (skillTitles[activeSkill.id] || "") : "";
+  const safeSkillMessages = Array.isArray(skillMessages) ? skillMessages : [];
 
   const skillConversationOptions = useMemo(() => {
     return skillConversations.map((c, idx) => {
@@ -162,18 +163,20 @@ export default function TeachAgentModal({
           </div>
         </div>
         <div className="teach-chat-box">
-          {skillMessages.length === 0 ? (
+          {safeSkillMessages.length === 0 ? (
             <div className="empty-state compact">
               <Bot size={18} strokeWidth={2} aria-hidden="true" />
               <p>Describe the skill goal and constraints. Then iterate with examples, edge cases, and expected outputs.</p>
             </div>
           ) : (
-            skillMessages.map((msg) => (
-              <div key={msg.id} className={`message-wrap ${msg.role}`}>
-                <div className={`message ${msg.role}`}>
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || (msg.status === "pending" ? "Thinking..." : "")}</ReactMarkdown>
+            safeSkillMessages.map((msg, idx) => (
+              <div key={msg?.id ?? `skill-msg-${idx}`} className={`message-wrap ${msg?.role || "assistant"}`}>
+                <div className={`message ${msg?.role || "assistant"}`}>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {typeof msg?.content === "string" ? msg.content : (msg?.status === "pending" ? "Thinking..." : "")}
+                  </ReactMarkdown>
                 </div>
-                <div className="message-meta">{formatTime(msg.created_at)}</div>
+                <div className="message-meta" title={msg?.created_at || ""}>{formatMessageTime(msg?.created_at)}</div>
               </div>
             ))
           )}
