@@ -19,11 +19,29 @@ export function useSkillTeaching() {
   const [skillMessages, setSkillMessages] = useState([]);
   const [skillMarkdown, setSkillMarkdown] = useState("");
 
+  function resetActiveSkillState() {
+    setActiveSkillId(null);
+    setActiveSkillConversationId(null);
+    setSkillMessages([]);
+    setSkillMarkdown("");
+  }
+
+  function setErrorStatus(defaultMessage, detail) {
+    setTeachStatus({ type: "error", text: detail || defaultMessage });
+  }
+
+  async function withLoading(setLoading, task) {
+    setLoading(true);
+    try {
+      await task();
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
     if (!teachModalOpen) {
-      setActiveSkillId(null);
-      setActiveSkillConversationId(null);
-      setSkillMessages([]);
+      resetActiveSkillState();
       return;
     }
     loadSkills();
@@ -61,50 +79,44 @@ export function useSkillTeaching() {
   async function createSkill() {
     if (createSkillLoading) return;
     const name = `New Skill ${skills.length + 1}`;
-    setCreateSkillLoading(true);
     setTeachStatus(null);
-    try {
-      const { ok, data } = await api.post("/skills", { name });
-      if (!ok) {
-        setTeachStatus({ type: "error", text: data.detail || "Failed to create skill" });
-        return;
+    await withLoading(setCreateSkillLoading, async () => {
+      try {
+        const { ok, data } = await api.post("/skills", { name });
+        if (!ok) {
+          setErrorStatus("Failed to create skill", data.detail);
+          return;
+        }
+        setTeachStatus({ type: "success", text: `Created skill ${data.name}` });
+        await loadSkills();
+        setActiveSkillId(data.id);
+        const convs = await loadSkillConversations(data.id);
+        if (convs.length) setActiveSkillConversationId(convs[0].id);
+      } catch (_err) {
+        setErrorStatus(
+          "Could not reach backend. Check backend is running on :8000 and DB schema is up to date (make db-init).",
+        );
       }
-      setTeachStatus({ type: "success", text: `Created skill ${data.name}` });
-      await loadSkills();
-      setActiveSkillId(data.id);
-      const convs = await loadSkillConversations(data.id);
-      if (convs.length) setActiveSkillConversationId(convs[0].id);
-    } catch (_err) {
-      setTeachStatus({
-        type: "error",
-        text: "Could not reach backend. Check backend is running on :8000 and DB schema is up to date (make db-init).",
-      });
-    } finally {
-      setCreateSkillLoading(false);
-    }
+    });
   }
 
   async function deleteSkill() {
     if (!activeSkillId || deleteSkillLoading) return;
-    setDeleteSkillLoading(true);
     setTeachStatus(null);
-    try {
-      const { ok, data } = await api.del(`/skills/${activeSkillId}`);
-      if (!ok) {
-        setTeachStatus({ type: "error", text: data.detail || "Failed to delete skill" });
-        return;
+    await withLoading(setDeleteSkillLoading, async () => {
+      try {
+        const { ok, data } = await api.del(`/skills/${activeSkillId}`);
+        if (!ok) {
+          setErrorStatus("Failed to delete skill", data.detail);
+          return;
+        }
+        setTeachStatus({ type: "success", text: "Skill deleted" });
+        resetActiveSkillState();
+        await loadSkills();
+      } catch (_err) {
+        setErrorStatus("Network error while deleting skill");
       }
-      setTeachStatus({ type: "success", text: "Skill deleted" });
-      setActiveSkillId(null);
-      setActiveSkillConversationId(null);
-      setSkillMessages([]);
-      setSkillMarkdown("");
-      await loadSkills();
-    } catch (_err) {
-      setTeachStatus({ type: "error", text: "Network error while deleting skill" });
-    } finally {
-      setDeleteSkillLoading(false);
-    }
+    });
   }
 
   async function loadSkillConversations(skillId) {
@@ -121,7 +133,7 @@ export function useSkillTeaching() {
     if (!activeSkillId) return;
     const { ok, data } = await api.post(`/skills/${activeSkillId}/conversations`);
     if (!ok) {
-      setTeachStatus({ type: "error", text: data.detail || "Failed to create skill conversation" });
+      setErrorStatus("Failed to create skill conversation", data.detail);
       return;
     }
     await loadSkillConversations(activeSkillId);
@@ -145,43 +157,41 @@ export function useSkillTeaching() {
   async function sendSkillMessage() {
     if (!activeSkillConversationId || !teachInput.trim() || teachLoading) return;
     const content = teachInput.trim();
-    setTeachLoading(true);
     setTeachStatus(null);
     setTeachInput("");
-    try {
-      const { ok, data } = await api.post(`/skill-conversations/${activeSkillConversationId}/messages`, { content });
-      if (!ok) {
-        setTeachStatus({ type: "error", text: data.detail || "Failed to send skill message" });
-        return;
+    await withLoading(setTeachLoading, async () => {
+      try {
+        const { ok, data } = await api.post(`/skill-conversations/${activeSkillConversationId}/messages`, { content });
+        if (!ok) {
+          setErrorStatus("Failed to send skill message", data.detail);
+          return;
+        }
+        await loadSkillMessages(activeSkillConversationId);
+      } catch (_err) {
+        setErrorStatus("Network error while sending skill message");
       }
-      await loadSkillMessages(activeSkillConversationId);
-    } catch (_err) {
-      setTeachStatus({ type: "error", text: "Network error while sending skill message" });
-    } finally {
-      setTeachLoading(false);
-    }
+    });
   }
 
   async function publishSkill() {
     if (!activeSkillId || !activeSkillConversationId || publishLoading) return;
-    setPublishLoading(true);
     setTeachStatus(null);
-    try {
-      const { ok, data } = await api.post(`/skills/${activeSkillId}/publish`, {
-        skill_conversation_id: activeSkillConversationId,
-      });
-      if (!ok) {
-        setTeachStatus({ type: "error", text: data.detail || "Failed to publish skill" });
-        return;
+    await withLoading(setPublishLoading, async () => {
+      try {
+        const { ok, data } = await api.post(`/skills/${activeSkillId}/publish`, {
+          skill_conversation_id: activeSkillConversationId,
+        });
+        if (!ok) {
+          setErrorStatus("Failed to publish skill", data.detail);
+          return;
+        }
+        setTeachStatus({ type: "success", text: `Published ${data.name}` });
+        await loadSkills();
+        await loadSkillMarkdown(activeSkillId);
+      } catch (_err) {
+        setErrorStatus("Network error while publishing skill");
       }
-      setTeachStatus({ type: "success", text: `Published ${data.name}` });
-      await loadSkills();
-      await loadSkillMarkdown(activeSkillId);
-    } catch (_err) {
-      setTeachStatus({ type: "error", text: "Network error while publishing skill" });
-    } finally {
-      setPublishLoading(false);
-    }
+    });
   }
 
   return {
