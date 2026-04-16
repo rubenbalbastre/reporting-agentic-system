@@ -68,7 +68,9 @@ def parse_skill_agent_output(raw_output: str) -> dict[str, str]:
     }
 
 
-def build_skill_chat_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
+def build_skill_chat_input(
+    history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
+) -> list[dict[str, str]]:
     return build_chat_input(
         "Skill teaching conversation:",
         history_rows,

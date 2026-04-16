@@ -16,7 +16,9 @@ from app.utils.chat_input import build_chat_input
 from app.utils.workspace_paths import get_report_markdown_path, get_report_workspace, resolve_workspace_relative_path
 
 
-def build_agent_input(history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20) -> str:
+def build_agent_input(
+    history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
+) -> list[dict[str, str]]:
     return build_chat_input(
         "Use the conversation history to keep context consistent.\nConversation:",
         history_rows,
