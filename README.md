@@ -19,7 +19,13 @@ The Reports experience is designed for iterative delivery:
 
 Skills are the reusable behavior layer. Teams can teach guidance once and publish it as shared `SKILL.md` instructions for future worker runs.
 
-<img src="docs/images/ux_skills.png" alt="ReportingAgent Skills UI" width="900" />
+Teach flow (draft creation and agent-assisted editing):
+
+<img src="docs/images/ux_teach_skills.png" alt="ReportingAgent Teach the Agent UI" width="900" />
+
+Library flow (published skill browsing and reuse):
+
+<img src="docs/images/ux_skills_library.png" alt="ReportingAgent Skill Library UI" width="900" />
 
 The Skills flow supports collaborative reuse:
 
