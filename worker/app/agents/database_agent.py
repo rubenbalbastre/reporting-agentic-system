@@ -1,12 +1,8 @@
-from pathlib import Path
-from pydantic import BaseModel, Field
-from agents import Agent, function_tool
-from dotenv import load_dotenv
+from agents import function_tool
 import os
 import psycopg2
 from psycopg2 import sql
 from collections import defaultdict
-from app.agents.prompts import build_database_agent_instructions
 
 
 def get_db_connection():
@@ -152,44 +148,3 @@ def preview_table(table: str, limit: int = 10):
             cols = [desc[0] for desc in cur.description]
             rows = cur.fetchall()
     return {"columns": cols, "rows": rows}
-
-
-class RelevantItem(BaseModel):
-    table_name: str
-    columns: list[str]
-
-
-class DataBaseInspection(BaseModel):
-    question_can_be_answered_with_db: bool
-    relevant_items: list[RelevantItem] = Field(default_factory=list)
-    reason: str
-    pseudo_query: str
-
-
-def build_database_agent() -> Agent:
-
-    database_agent = Agent(
-        name="database_agent",
-        instructions=build_database_agent_instructions(),
-        model="gpt-5.4-nano",
-        output_type=DataBaseInspection,
-        tools=[
-            get_database_schema,
-            get_unique_values,
-            get_column_stats,
-            preview_table,
-        ]
-    )
-
-    return database_agent
-
-
-if __name__ == "__main__":
-    from agents import Runner
-    import asyncio
-    if os.getenv("APP_ENV") != "docker":
-        load_dotenv(Path(__file__).resolve().parents[3] / ".env.local")
-        
-    agent = build_database_agent()
-    result = asyncio.run(Runner.run(agent, "Can you answer questions about total sales by product category in the last month?"))
-    print(result.final_output)

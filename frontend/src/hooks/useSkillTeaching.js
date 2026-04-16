@@ -184,27 +184,6 @@ export function useSkillTeaching() {
     }
   }
 
-  async function legacyQuickSave() {
-    const content = teachInput.trim();
-    if (!content || teachLoading) return;
-    setTeachLoading(true);
-    setTeachStatus(null);
-    try {
-      const { ok, data } = await api.post("/agent/teach", { content });
-      if (!ok) {
-        setTeachStatus({ type: "error", text: data.detail || "Failed to create skill" });
-        return;
-      }
-      setTeachStatus({ type: "success", text: `Saved as ${data.skill_filename}` });
-      setTeachInput("");
-      await loadSkills();
-    } catch (_err) {
-      setTeachStatus({ type: "error", text: "Network error while creating skill" });
-    } finally {
-      setTeachLoading(false);
-    }
-  }
-
   return {
     teachModalOpen,
     setTeachModalOpen,
@@ -229,6 +208,5 @@ export function useSkillTeaching() {
     createSkillConversation,
     sendSkillMessage,
     publishSkill,
-    legacyQuickSave,
   };
 }

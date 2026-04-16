@@ -1,8 +1,6 @@
-
-import asyncio
 import os
 import requests
-from agents import Agent, Runner, function_tool
+from agents import Agent, function_tool
 from opentelemetry.propagate import inject
 from app.agents.report_agent import build_report_agent
 from app.agents.prompts import build_main_agent_instructions
@@ -40,13 +38,3 @@ def build_main_agent(report_id: int) -> Agent:
         ],
     )
     return agent
-
-
-async def main() -> None:
-    agent = build_main_agent(report_id=1)
-    result = await Runner.run(agent, "Create a report with the total sales for each product category in the last month.")
-    print(result.final_output)
-
-
-if __name__ == "__main__":
-    asyncio.run(main())

@@ -43,11 +43,3 @@ Output requirement:
     if additional_instructions:
         instructions += "\n\nAdditional notes:\n" + additional_instructions
     return instructions
-
-
-def build_database_agent_instructions() -> str:
-    return (
-        "You must think if the user's question can be answered by querying the database. "
-        "If it can, you should generate SQL queries based on the user's question. "
-        "You should only respond with the SQL query and nothing else."
-    )
