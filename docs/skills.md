@@ -26,6 +26,12 @@ Skills are stored in the shared Docker volume:
 /data/shared/skills/<skill_slug>/SKILL.md
 ```
 
+Draft skills are created in an auxiliary shared directory and edited there until publish:
+
+```text
+/data/shared/skills_drafts/<draft_slug>/SKILL.md
+```
+
 `/data/shared` is backed by Docker volume `shared_data`.
 
 ## File Structure
@@ -130,12 +136,11 @@ Behavior notes:
 Publishing a skill:
 
 1. Reads selected skill conversation messages.
-2. Uses skill agent to generate structured output:
-   - `skill_name`
-   - `description`
-   - `skill_markdown`
-3. Writes `SKILL.md` into shared volume.
-4. Updates `skills` table metadata and `skill_md_path`.
+2. No agent is called during publish.
+3. Backend validates the draft `SKILL.md` frontmatter (`name`, `description`).
+4. Backend checks that no published skill with the same name/slug already exists.
+5. Backend moves the full draft folder from `skills_drafts/` to `skills/`.
+6. Backend updates `skills` table metadata and `skill_md_path`.
 
 The publish endpoint updates:
 - `name`

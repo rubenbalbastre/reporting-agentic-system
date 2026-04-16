@@ -22,6 +22,8 @@ from app.utils.skill_utils import (
     delete_skill_filesystem,
     get_skill,
     get_skill_conversation,
+    list_skill_folder_files,
+    open_published_skill_in_draft,
     read_skill_markdown,
 )
 from app.utils.skills import list_existing_skills
@@ -62,12 +64,26 @@ def get_skill_markdown(skill_id: int) -> dict[str, str]:
     return {"content": read_skill_markdown(skill)}
 
 
+@router.get("/skills/{skill_id}/files")
+def get_skill_files(skill_id: int) -> dict[str, list[str]]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            skill = get_skill(cur, skill_id)
+    return {"files": list_skill_folder_files(skill)}
+
+
 @router.post("/skills", response_model=Skill, status_code=201)
 def create_skill(payload: CreateSkillRequest) -> Skill:
     name = payload.name.strip()
     if not name:
         raise HTTPException(status_code=400, detail="Skill name is required")
     row = create_skill_row(name=name, description="")
+    return Skill(**row)
+
+
+@router.post("/skills/{skill_id}/open-draft", response_model=Skill, status_code=201)
+def open_skill_in_draft(skill_id: int) -> Skill:
+    row = open_published_skill_in_draft(skill_id)
     return Skill(**row)
 
 

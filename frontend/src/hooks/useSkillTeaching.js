@@ -3,6 +3,7 @@ import { api } from "../api";
 
 export function useSkillTeaching(toast) {
   const [teachModalOpen, setTeachModalOpen] = useState(false);
+  const [teachInitialPanel, setTeachInitialPanel] = useState("draft");
   const [teachInput, setTeachInput] = useState("");
   const [teachStatus, setTeachStatus] = useState(null);
   const [teachLoading, setTeachLoading] = useState(false);
@@ -12,18 +13,21 @@ export function useSkillTeaching(toast) {
   const [createSkillLoading, setCreateSkillLoading] = useState(false);
   const [deleteSkillLoading, setDeleteSkillLoading] = useState(false);
   const [publishLoading, setPublishLoading] = useState(false);
+  const [openDraftLoading, setOpenDraftLoading] = useState(false);
 
   const [activeSkillId, setActiveSkillId] = useState(null);
   const [skillConversations, setSkillConversations] = useState([]);
   const [activeSkillConversationId, setActiveSkillConversationId] = useState(null);
   const [skillMessages, setSkillMessages] = useState([]);
   const [skillMarkdown, setSkillMarkdown] = useState("");
+  const [skillFiles, setSkillFiles] = useState([]);
 
   function resetActiveSkillState() {
     setActiveSkillId(null);
     setActiveSkillConversationId(null);
     setSkillMessages([]);
     setSkillMarkdown("");
+    setSkillFiles([]);
   }
 
   function setErrorStatus(defaultMessage, detail) {
@@ -54,10 +58,12 @@ export function useSkillTeaching(toast) {
       setSkillConversations([]);
       setActiveSkillConversationId(null);
       setSkillMarkdown("");
+      setSkillFiles([]);
       return;
     }
     loadSkillConversations(activeSkillId);
     loadSkillMarkdown(activeSkillId);
+    loadSkillFiles(activeSkillId);
   }, [activeSkillId]);
 
   useEffect(() => {
@@ -67,6 +73,12 @@ export function useSkillTeaching(toast) {
     }
     loadSkillMessages(activeSkillConversationId);
   }, [activeSkillConversationId]);
+
+  useEffect(() => {
+    if (!teachStatus) return;
+    const timer = setTimeout(() => setTeachStatus(null), 3500);
+    return () => clearTimeout(timer);
+  }, [teachStatus]);
 
   async function loadSkills() {
     setSkillsLoading(true);
@@ -166,6 +178,15 @@ export function useSkillTeaching(toast) {
     setSkillMarkdown(data.content || "");
   }
 
+  async function loadSkillFiles(skillId) {
+    const { ok, data } = await api.get(`/skills/${skillId}/files`);
+    if (!ok) {
+      setSkillFiles([]);
+      return;
+    }
+    setSkillFiles(Array.isArray(data.files) ? data.files : []);
+  }
+
   async function sendSkillMessage() {
     if (!activeSkillConversationId || !teachInput.trim() || teachLoading) return;
     const content = teachInput.trim();
@@ -212,9 +233,45 @@ export function useSkillTeaching(toast) {
     });
   }
 
+  async function openSkillInDraft() {
+    if (!activeSkillId || openDraftLoading) return;
+    setTeachStatus(null);
+    await withLoading(setOpenDraftLoading, async () => {
+      try {
+        const { ok, data } = await api.post(`/skills/${activeSkillId}/open-draft`);
+        if (!ok) {
+          setErrorStatus("Failed to open draft", data.detail);
+          return;
+        }
+        setTeachStatus({ type: "success", text: `Opened draft ${data.name}` });
+        toast?.success(`Opened draft ${data.name}`);
+        setTeachInitialPanel("draft");
+        await loadSkills();
+        setActiveSkillId(data.id);
+        const convs = await loadSkillConversations(data.id);
+        if (convs.length) {
+          setActiveSkillConversationId(convs[0].id);
+        }
+        await loadSkillMarkdown(data.id);
+      } catch (_err) {
+        setErrorStatus("Network error while opening draft");
+      }
+    });
+  }
+
+  function isPublishedSkill(skill) {
+    const path = (skill?.skill_md_path || "").toLowerCase();
+    return path.includes("/skills/") && !path.includes("/skills_drafts/");
+  }
+
+  const activeSkill = skills.find((s) => s.id === activeSkillId) || null;
+  const activeSkillIsPublished = isPublishedSkill(activeSkill);
+
   return {
     teachModalOpen,
     setTeachModalOpen,
+    teachInitialPanel,
+    setTeachInitialPanel,
     teachInput,
     setTeachInput,
     teachStatus,
@@ -224,6 +281,7 @@ export function useSkillTeaching(toast) {
     createSkillLoading,
     deleteSkillLoading,
     publishLoading,
+    openDraftLoading,
     activeSkillId,
     setActiveSkillId,
     skillConversations,
@@ -231,10 +289,14 @@ export function useSkillTeaching(toast) {
     setActiveSkillConversationId,
     skillMessages,
     skillMarkdown,
+    skillFiles,
     createSkill,
     deleteSkill,
     createSkillConversation,
     sendSkillMessage,
     publishSkill,
+    openSkillInDraft,
+    activeSkillIsPublished,
+    isPublishedSkill,
   };
 }

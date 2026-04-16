@@ -2,12 +2,17 @@ from __future__ import annotations
 
 import re
 import os
+import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
 
 def get_main_agent_skills_root() -> Path:
     return Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills")).resolve()
+
+
+def get_main_agent_skills_drafts_root() -> Path:
+    return Path(os.getenv("MAIN_AGENT_SKILLS_DRAFTS_ROOT", "/data/shared/skills_drafts")).resolve()
 
 
 def slugify(text: str, max_len: int = 50) -> str:
@@ -136,6 +141,53 @@ def _parse_frontmatter_name_description(skill_md_text: str) -> tuple[str, str]:
         elif key == "description" and value:
             description = value
     return name, description
+
+
+def read_skill_name_description(skill_md_path: str) -> tuple[str, str]:
+    path = Path(skill_md_path).resolve()
+    if not path.exists() or not path.is_file():
+        return "", ""
+    text = path.read_text(encoding="utf-8")
+    return _parse_frontmatter_name_description(text)
+
+
+def publish_skill_draft(skill_md_path: str) -> dict[str, str]:
+    drafts_root = get_main_agent_skills_drafts_root()
+    final_root = get_main_agent_skills_root()
+    drafts_root.mkdir(parents=True, exist_ok=True)
+    final_root.mkdir(parents=True, exist_ok=True)
+
+    draft_md = Path(skill_md_path).resolve()
+    if not draft_md.exists() or not draft_md.is_file() or draft_md.name != "SKILL.md":
+        raise ValueError("Draft SKILL.md not found")
+
+    try:
+        draft_md.relative_to(drafts_root)
+    except ValueError as exc:
+        raise ValueError("Draft path is outside drafts root") from exc
+
+    skill_name, description = read_skill_name_description(str(draft_md))
+    if not skill_name or not description:
+        raise ValueError("SKILL.md must include frontmatter name and description")
+
+    slug = slugify(skill_name)
+    target_dir = (final_root / slug).resolve()
+    if target_dir.exists():
+        raise FileExistsError(f"Skill already exists: {slug}")
+    if target_dir.parent != final_root:
+        raise ValueError("Invalid publish target")
+
+    draft_dir = draft_md.parent.resolve()
+    shutil.move(str(draft_dir), str(target_dir))
+    final_md = (target_dir / "SKILL.md").resolve()
+
+    return {
+        "name": skill_name,
+        "description": description,
+        "slug": slug,
+        "skill_md_path": str(final_md),
+        "path": str(target_dir),
+    }
 
 
 def list_existing_skills(limit: int = 200) -> list[dict[str, str]]:

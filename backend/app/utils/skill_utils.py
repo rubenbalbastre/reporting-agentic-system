@@ -54,6 +54,26 @@ def read_skill_markdown(skill: dict[str, Any]) -> str:
     return path.read_text(encoding="utf-8")
 
 
+def list_skill_folder_files(skill: dict[str, Any]) -> list[str]:
+    raw_path = (skill.get("skill_md_path") or "").strip()
+    if not raw_path:
+        raise HTTPException(status_code=404, detail="Skill markdown has not been published yet")
+
+    skill_md = Path(raw_path).resolve()
+    if not skill_md.exists() or not skill_md.is_file():
+        raise HTTPException(status_code=404, detail="Skill markdown file not found")
+
+    skill_dir = skill_md.parent.resolve()
+    items: list[str] = []
+    for path in sorted(skill_dir.rglob("*")):
+        rel = path.relative_to(skill_dir)
+        label = f"{rel}/" if path.is_dir() else str(rel)
+        items.append(label)
+    if "SKILL.md" not in items:
+        items.insert(0, "SKILL.md")
+    return items
+
+
 def parse_skill_agent_output(raw_output: str) -> dict[str, str]:
     text = (raw_output or "").strip()
     if text.startswith("```"):

@@ -71,7 +71,24 @@ export default function App() {
           </div>
         </div>
         <div className="topbar-utilities">
-          <button className="teach-btn btn-primary" onClick={() => skill.setTeachModalOpen(true)}>
+          <button
+            className="btn-secondary"
+            onClick={() => {
+              skill.setActiveSkillId(null);
+              skill.setTeachInitialPanel("published");
+              skill.setTeachModalOpen(true);
+            }}
+          >
+            Skill Library
+          </button>
+          <button
+            className="teach-btn btn-primary"
+            onClick={() => {
+              skill.setActiveSkillId(null);
+              skill.setTeachInitialPanel("draft");
+              skill.setTeachModalOpen(true);
+            }}
+          >
             Teach the Agent
           </button>
         </div>
@@ -170,6 +187,7 @@ export default function App() {
 
       <TeachAgentModal
         open={skill.teachModalOpen}
+        mode={skill.teachInitialPanel}
         skills={skill.skills}
         skillsLoading={skill.skillsLoading}
         activeSkillId={skill.activeSkillId}
@@ -179,9 +197,12 @@ export default function App() {
         activeSkillConversationId={skill.activeSkillConversationId}
         skillMessages={skill.skillMessages}
         skillMarkdown={skill.skillMarkdown}
+        skillFiles={skill.skillFiles}
         teachInput={skill.teachInput}
         teachLoading={skill.teachLoading}
         publishLoading={skill.publishLoading}
+        openDraftLoading={skill.openDraftLoading}
+        activeSkillIsPublished={skill.activeSkillIsPublished}
         teachStatus={skill.teachStatus}
         onClose={() => skill.setTeachModalOpen(false)}
         onSelectSkill={skill.setActiveSkillId}
@@ -192,6 +213,7 @@ export default function App() {
         onTeachInput={skill.setTeachInput}
         onSendSkillMessage={skill.sendSkillMessage}
         onPublishSkill={skill.publishSkill}
+        onOpenSkillInDraft={skill.openSkillInDraft}
       />
 
 
