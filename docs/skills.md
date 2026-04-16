@@ -114,21 +114,40 @@ Compatibility endpoints:
 
 ## UX Flow
 
-`Teach the Agent` opens an almost full-window modal with:
+The Skills UX is split into two entry points:
 
-- Left panel: existing skills list (hide/show available)
-- Right panel:
-  - skill markdown preview
-  - skill teaching chat
+- `Teach the Agent`: draft creation and iterative teaching with the skill agent.
+- `Skill Library`: published skills browsing and management.
+
+### Teach the Agent (Drafts)
+
+`Teach the Agent` opens an almost full-window editor with:
+
+- Left panel: draft skills list.
+- Center/right working area: draft `SKILL.md` preview and teaching chat.
+- Top actions: create draft, rename, delete, and publish.
+
+![Teach the Agent Draft UI](images/ux_teach_skills.png)
+
+### Skill Library (Published)
+
+`Skill Library` shows published skills only:
+
+- Left panel: published skills list.
+- Middle panel: `SKILL.md` content preview.
+- Right panel: idle folder tree preview for the selected skill package.
+- Actions include opening a published skill in draft mode for edits.
+
+![Skill Library UI](images/ux_skills_library.png)
 
 Top-right controls:
 
 - `+` create a new skill draft
 - `🗑` delete selected skill
-- `Show Skills` / `Hide Skills`
+- `Publish` publish selected draft
 
 Behavior notes:
-- Skill preview panel shows "not published yet" until `POST /skills/{skill_id}/publish` succeeds.
+- Draft and published views are separated in the UI to avoid mixing editing and browsing contexts.
 - Publish uses the selected skill conversation (or latest if none provided in API payload).
 
 ## Publish Behavior
