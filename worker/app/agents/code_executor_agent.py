@@ -28,26 +28,6 @@ class CodeAgentResult(BaseModel):
     summary: str
 
 
-@function_tool
-def think_plan(plan: str) -> str:
-    """
-    Create a high-level plan for writing a Python script that answers the user's question.
-    Your plan should break down the problem into smaller steps, identify what functions or classes to create, and outline the logic flow.
-
-    
-    "Do not ask the user for additional data before checking the database first. "
-    "Only request extra data if, after database inspection, required information is truly missing."
-    "Database policy: this app uses PostgreSQL. Never propose SQLite or local .db files. "
-    "Use DATABASE_URL and PostgreSQL-compatible SQL/datatypes."
-    "Notes:\n"
-    "* Do not send instruction on checking requirements or installing dependencies. Assume all necessary libraries are available."
-    "* Do not waste steps on basic Python syntax or trivial code. Focus on the high-level structure and logic of the code needed to solve the problem."
-    "* It is ok if the plan has few steps. The code assistant can fill in details. The important thing is to have a clear structure and logic flow."
-    + ("\n\nAdditional notes:\n" + additional_instructions if additional_instructions else "")
-    """
-    return plan
-
-
 def build_code_executor_agent(workspace_dir: str) -> Agent:
     workspace = Path(workspace_dir).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
