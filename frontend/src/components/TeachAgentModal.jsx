@@ -12,6 +12,17 @@ import { isPublishedSkill } from "../utils/skills";
 const TITLE_KEY = "reportingagent:skill-conversation-titles";
 const SKILL_TITLE_KEY = "reportingagent:skill-display-titles";
 
+function formatSkillMarkdownForPreview(markdown) {
+  const text = String(markdown || "").replace(/^\uFEFF/, "");
+  const match = text.match(/^(\s*---\s*\r?\n)([\s\S]*?)(\r?\n\s*---\s*)(?:\r?\n)?/);
+  if (!match) return text;
+
+  const yamlBody = match[2].trim();
+  const rest = text.slice(match[0].length);
+  const yamlBlock = `\`\`\`yaml\n${yamlBody}\n\`\`\``;
+  return rest.trim() ? `${yamlBlock}\n\n${rest}` : yamlBlock;
+}
+
 export default function TeachAgentModal({
   open,
   mode = "draft",
@@ -54,6 +65,7 @@ export default function TeachAgentModal({
   const activeSkillTitle = activeSkill ? (skillTitles[activeSkill.id] || "") : "";
   const safeSkillMessages = Array.isArray(skillMessages) ? skillMessages : [];
   const safeSkillFiles = Array.isArray(skillFiles) ? skillFiles : [];
+  const previewMarkdown = useMemo(() => formatSkillMarkdownForPreview(skillMarkdown), [skillMarkdown]);
 
   const draftSkills = useMemo(() => skills.filter((s) => !isPublishedSkill(s)), [skills]);
   const publishedSkills = useMemo(() => skills.filter((s) => isPublishedSkill(s)), [skills]);
@@ -108,7 +120,7 @@ export default function TeachAgentModal({
           ) : null}
         </div>
         <div className="panel-content markdown-content">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>{skillMarkdown || "# Skill markdown not published yet"}</ReactMarkdown>
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>{previewMarkdown || "# Skill markdown not published yet"}</ReactMarkdown>
         </div>
       </section>
 
@@ -177,7 +189,7 @@ export default function TeachAgentModal({
               <div key={msg?.id ?? `skill-msg-${idx}`} className={`message-wrap ${msg?.role || "assistant"}`}>
                 <div className={`message ${msg?.role || "assistant"}`}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {typeof msg?.content === "string" ? msg.content : (msg?.status === "pending" ? "Thinking..." : "")}
+                    {msg?.status === "pending" ? "Thinking..." : (typeof msg?.content === "string" ? msg.content : "")}
                   </ReactMarkdown>
                 </div>
                 <div className="message-meta" title={msg?.created_at || ""}>{formatMessageTime(msg?.created_at)}</div>
