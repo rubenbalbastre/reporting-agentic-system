@@ -19,6 +19,12 @@ export default function App() {
   const report = useReportChat(toast);
   const skill = useSkillTeaching(toast);
 
+  function openSkillModal(mode) {
+    skill.setActiveSkillId(null);
+    skill.setTeachInitialPanel(mode);
+    skill.setTeachModalOpen(true);
+  }
+
   function resolveMarkdownAssetUrl(src) {
     if (!src) return "";
     if (src.startsWith("/reports/")) {
@@ -75,21 +81,13 @@ export default function App() {
         <div className="topbar-utilities">
           <button
             className="btn-secondary"
-            onClick={() => {
-              skill.setActiveSkillId(null);
-              skill.setTeachInitialPanel("published");
-              skill.setTeachModalOpen(true);
-            }}
+            onClick={() => openSkillModal("published")}
           >
             Skill Library
           </button>
           <button
             className="teach-btn btn-primary"
-            onClick={() => {
-              skill.setActiveSkillId(null);
-              skill.setTeachInitialPanel("draft");
-              skill.setTeachModalOpen(true);
-            }}
+            onClick={() => openSkillModal("draft")}
           >
             Teach the Agent
           </button>

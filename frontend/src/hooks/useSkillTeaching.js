@@ -152,16 +152,7 @@ export function useSkillTeaching(toast) {
         dispatch({ type: "set_teach_status", value: { type: "success", text: `Created skill ${data.name}` } });
         toast?.success(`Created skill ${data.name}`);
         await loadSkills();
-        dispatch({ type: "set_active_skill_id", value: data.id });
-        const convs = await loadSkillConversations(data.id);
-        if (!convs.length) {
-          const newConv = await api.post(`/skills/${data.id}/conversations`);
-          if (newConv.ok && newConv.data?.id) {
-            dispatch({ type: "set_active_skill_conversation_id", value: newConv.data.id });
-          }
-        } else {
-          dispatch({ type: "set_active_skill_conversation_id", value: convs[0].id });
-        }
+        await selectSkillAndEnsureConversation(data.id);
       } catch (_err) {
         setErrorStatus(
           "Could not reach backend. Check backend is running on :8000 and DB schema is up to date (make db-init).",
@@ -299,11 +290,7 @@ export function useSkillTeaching(toast) {
         toast?.success(`Opened draft ${data.name}`);
         dispatch({ type: "set_teach_initial_panel", value: "draft" });
         await loadSkills();
-        dispatch({ type: "set_active_skill_id", value: data.id });
-        const convs = await loadSkillConversations(data.id);
-        if (convs.length) {
-          dispatch({ type: "set_active_skill_conversation_id", value: convs[0].id });
-        }
+        await selectSkillAndEnsureConversation(data.id);
         await loadSkillMarkdown(data.id);
       } catch (_err) {
         setErrorStatus("Network error while opening draft");
@@ -313,6 +300,20 @@ export function useSkillTeaching(toast) {
 
   const activeSkill = state.skills.find((s) => s.id === state.activeSkillId) || null;
   const activeSkillIsPublished = isPublishedSkill(activeSkill);
+
+  async function selectSkillAndEnsureConversation(skillId) {
+    dispatch({ type: "set_active_skill_id", value: skillId });
+    const convs = await loadSkillConversations(skillId);
+    if (convs.length) {
+      dispatch({ type: "set_active_skill_conversation_id", value: convs[0].id });
+      return;
+    }
+
+    const newConv = await api.post(`/skills/${skillId}/conversations`);
+    if (newConv.ok && newConv.data?.id) {
+      dispatch({ type: "set_active_skill_conversation_id", value: newConv.data.id });
+    }
+  }
 
   return {
     teachModalOpen: state.teachModalOpen,

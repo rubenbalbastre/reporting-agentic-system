@@ -1,75 +1,16 @@
 import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Bot, Eye, EyeOff, FileText, Folder, Pencil, Plus, Sparkles, SquarePen, Trash2 } from "lucide-react";
+import { Bot, Eye, EyeOff, Pencil, Plus, Sparkles, SquarePen, Trash2 } from "lucide-react";
 import ConfirmModal from "./ConfirmModal";
 import PromptModal from "./PromptModal";
+import SkillFileTree from "./SkillFileTree";
 import { formatMessageTime } from "../utils/datetime";
 import { useLocalStorageMap } from "../hooks/useLocalStorageMap";
 import { isPublishedSkill } from "../utils/skills";
 
 const TITLE_KEY = "reportingagent:skill-conversation-titles";
 const SKILL_TITLE_KEY = "reportingagent:skill-display-titles";
-
-function buildTree(paths) {
-  const root = { name: "", path: "", type: "dir", children: new Map() };
-  for (const raw of paths) {
-    const normalized = String(raw || "").replace(/\/+$/, "");
-    if (!normalized) continue;
-    const parts = normalized.split("/").filter(Boolean);
-    let node = root;
-    let acc = "";
-    for (let i = 0; i < parts.length; i += 1) {
-      const part = parts[i];
-      acc = acc ? `${acc}/${part}` : part;
-      const isLeaf = i === parts.length - 1;
-      const isDir = !isLeaf ? true : String(raw).endsWith("/");
-      if (!node.children.has(part)) {
-        node.children.set(part, {
-          name: part,
-          path: acc,
-          type: isDir ? "dir" : "file",
-          children: new Map(),
-        });
-      }
-      node = node.children.get(part);
-      if (isDir) node.type = "dir";
-    }
-  }
-  return root;
-}
-
-function sortNodes(nodes) {
-  return [...nodes].sort((a, b) => {
-    if (a.type !== b.type) return a.type === "dir" ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
-}
-
-function FileTree({ node, depth = 0 }) {
-  const children = sortNodes(node.children.values());
-  if (!children.length) return null;
-  return (
-    <ul className="skill-tree-level" data-depth={depth}>
-      {children.map((child) => {
-        const isSkillMd = child.type === "file" && child.name.toLowerCase() === "skill.md";
-        return (
-          <li key={child.path} className={`skill-tree-item ${isSkillMd ? "skill-md" : ""}`}>
-            <div className="skill-tree-row" style={{ paddingLeft: `${depth * 14}px` }}>
-              {child.type === "dir" ? (
-                <Folder size={14} strokeWidth={2} aria-hidden="true" />
-              ) : (
-                <FileText size={14} strokeWidth={2} aria-hidden="true" />
-              )}
-              <span>{child.name}</span>
-            </div>
-            {child.type === "dir" ? <FileTree node={child} depth={depth + 1} /> : null}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
 
 export default function TeachAgentModal({
   open,
@@ -113,18 +54,11 @@ export default function TeachAgentModal({
   const activeSkillTitle = activeSkill ? (skillTitles[activeSkill.id] || "") : "";
   const safeSkillMessages = Array.isArray(skillMessages) ? skillMessages : [];
   const safeSkillFiles = Array.isArray(skillFiles) ? skillFiles : [];
-  const skillFilesTree = useMemo(() => buildTree(safeSkillFiles), [safeSkillFiles]);
 
   const draftSkills = useMemo(() => skills.filter((s) => !isPublishedSkill(s)), [skills]);
   const publishedSkills = useMemo(() => skills.filter((s) => isPublishedSkill(s)), [skills]);
   const skillsPanel = mode === "published" ? "published" : "draft";
   const visibleSkills = skillsPanel === "published" ? publishedSkills : draftSkills;
-
-  if (!open) return null;
-
-  function handleSelectSkill(skillId) {
-    onSelectSkill(skillId);
-  }
 
   const skillConversationOptions = useMemo(() => {
     return skillConversations.map((c, idx) => {
@@ -132,6 +66,8 @@ export default function TeachAgentModal({
       return { ...c, displayName: conversationTitles[c.id] || fallback };
     });
   }, [skillConversations, conversationTitles]);
+
+  if (!open) return null;
 
   function handleCreateSkillClick() {
     setSkillsSidebarHidden(true);
@@ -185,7 +121,7 @@ export default function TeachAgentModal({
             {safeSkillFiles.length === 0 ? (
               <div className="skills-empty">No files found.</div>
             ) : (
-              <FileTree node={skillFilesTree} />
+              <SkillFileTree paths={safeSkillFiles} />
             )}
           </div>
         </section>
@@ -367,7 +303,7 @@ export default function TeachAgentModal({
                       <li
                         key={skill.id}
                         className={`skills-item ${activeSkillId === skill.id ? "active" : ""}`}
-                        onClick={() => handleSelectSkill(skill.id)}
+                        onClick={() => onSelectSkill(skill.id)}
                       >
                         <div className="skills-item-name">{skillTitles[skill.id] || "Untitled Skill"}</div>
                         <div className="skills-item-desc">Name: {skill.name}</div>
