@@ -4,27 +4,27 @@ This document explains the current agent architecture used by ReportingAgent.
 
 ## Overview
 
-The report chat flow is orchestrated by a backend `main_agent` that coordinates:
+The report chat flow is orchestrated by a backend `reporting_agent` that coordinates:
 
-- a report-editing tool agent (`report_agent`)
+- a report-editing tool agent (`editor_agent`)
 - a worker execution service (`POST /invoke`) that runs `code_executor_agent`
 
 Skills are managed by dedicated backend agents for teaching and publishing.
 
 ## Agent Roles
 
-### `main_agent` (backend)
+### `reporting_agent` (backend)
 
-- Built in `backend/app/agents/main_agent.py`
+- Built in `backend/app/agents/reporting_agent.py`
 - Model: `gpt-5.4-mini`
 - Purpose: orchestrate report responses from chat input
 - Tools:
-  - `report_agent`: edits `report.md` and workspace files safely
+  - `editor_agent`: edits `report.md` and workspace files safely
   - `call_artifact_worker(content)`: calls worker `POST /invoke` with `{query, report_id}`
 
-### `report_agent` (backend tool-agent)
+### `editor_agent` (backend tool-agent)
 
-- Built in `backend/app/agents/report_agent.py`
+- Built in `backend/app/agents/editor_agent.py`
 - Model: `gpt-5.4-mini`
 - Purpose: deterministic report/workspace editing for one report workspace
 - Key tools:
@@ -53,7 +53,7 @@ Skills are managed by dedicated backend agents for teaching and publishing.
 
 ### Skills Agents (backend)
 
-- `main_skill_agent` (`gpt-5.4-mini`): orchestrates skill generation and can only call the worker code executor tool (`POST /invoke`) with a skill session workspace.
+- `skill_agent` (`gpt-5.4-mini`): orchestrates skill generation and can only call the worker code executor tool (`POST /invoke`) with a skill session workspace.
 
 ## End-to-End Report Message Flow
 
@@ -61,9 +61,9 @@ For `POST /conversations/{conversation_id}/messages`:
 
 1. Backend validates input and loads message history from Postgres.
 2. Backend ensures `report.md` exists in `/data/shared/jobs/report_<id>/`.
-3. Backend runs `main_agent` with recent conversation context.
-4. `main_agent` may call worker `/invoke` for analysis/artifact generation.
-5. `main_agent` uses `report_agent` to write/update `report.md` and references.
+3. Backend runs `reporting_agent` with recent conversation context.
+4. `reporting_agent` may call worker `/invoke` for analysis/artifact generation.
+5. `reporting_agent` uses `editor_agent` to write/update `report.md` and references.
 6. Backend stores user + assistant messages in `messages`.
 7. Frontend refreshes chat and report markdown preview.
 
@@ -90,10 +90,10 @@ For `POST /conversations/{conversation_id}/messages`:
 
 ## Models In Use
 
-- `main_agent`: `gpt-5.4-mini`
-- `report_agent`: `gpt-5.4-mini`
+- `reporting_agent`: `gpt-5.4-mini`
+- `editor_agent`: `gpt-5.4-mini`
 - `code_executor_agent`: `gpt-5.4-mini`
-- `main_skill_agent`: `gpt-5.4-mini`
+- `skill_agent`: `gpt-5.4-mini`
 
 ## Design Decisions
 

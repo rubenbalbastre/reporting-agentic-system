@@ -23,7 +23,7 @@ Base URLs (default local setup):
 Behavior notes:
 
 - Creating a report also creates its first conversation.
-- Sending a message to a report conversation triggers the backend orchestration flow (`main_agent` + tools).
+- Sending a message to a report conversation triggers the backend orchestration flow (`reporting_agent` + tools).
 - Report files are served from the report workspace via `/reports/{id}/files/{path}`.
 
 ## Skills

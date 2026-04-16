@@ -55,10 +55,10 @@ Initial content:
 When sending `POST /conversations/{conversation_id}/messages`:
 
 1. Backend loads conversation history and ensures `report.md` exists.
-2. Backend runs `main_agent` (model `gpt-5.4-mini`).
-3. `main_agent` can use:
+2. Backend runs `reporting_agent` (model `gpt-5.4-mini`).
+3. `reporting_agent` can use:
    - `call_artifact_worker` -> `POST /invoke` on worker with `{query, report_id}`.
-   - `report_agent` -> workspace-safe tools to read/update `report.md` and files.
+   - `editor_agent` -> workspace-safe tools to read/update `report.md` and files.
 4. Worker `/invoke` runs `code_executor_agent` (model `gpt-5.4-mini`) with tools for:
    - file operations in `report_<id>/`
    - Python execution (`run_python`)
