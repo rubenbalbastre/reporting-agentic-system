@@ -1,8 +1,10 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
+import { useState } from "react";
 import ReportChatPanel from "./components/ReportChatPanel";
 import TeachAgentModal from "./components/TeachAgentModal";
+import ConfirmModal from "./components/ConfirmModal";
 import ToastStack from "./components/ToastStack";
 import { api } from "./api";
 import { useReportChat, VIEW } from "./hooks/useReportChat";
@@ -11,6 +13,7 @@ import { useToast } from "./hooks/useToast";
 
 export default function App() {
   const { toasts, toast } = useToast();
+  const [reportDeleteOpen, setReportDeleteOpen] = useState(false);
   const report = useReportChat(toast);
   const skill = useSkillTeaching(toast);
 
@@ -98,11 +101,7 @@ export default function App() {
               </button>
               <button
                 className="btn-delete-report icon-danger-btn"
-                onClick={() => {
-                  if (!report.activeReportId) return;
-                  const confirmed = window.confirm("Delete this report and all its conversations?");
-                  if (confirmed) report.deleteReport();
-                }}
+                onClick={() => setReportDeleteOpen(true)}
                 disabled={!report.activeReportId || report.deleteReportLoading}
                 title={report.deleteReportLoading ? "Deleting report..." : "Delete report"}
                 aria-label={report.deleteReportLoading ? "Deleting report" : "Delete report"}
@@ -193,6 +192,20 @@ export default function App() {
         onTeachInput={skill.setTeachInput}
         onSendSkillMessage={skill.sendSkillMessage}
         onPublishSkill={skill.publishSkill}
+      />
+
+
+      <ConfirmModal
+        open={reportDeleteOpen}
+        title="Delete Report"
+        message="Delete this report and all its conversations?"
+        confirmLabel="Delete Report"
+        loading={report.deleteReportLoading}
+        onCancel={() => setReportDeleteOpen(false)}
+        onConfirm={async () => {
+          await report.deleteReport();
+          setReportDeleteOpen(false);
+        }}
       />
 
       <ToastStack toasts={toasts} onDismiss={toast.remove} />

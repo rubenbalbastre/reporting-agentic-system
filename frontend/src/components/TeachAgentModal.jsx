@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, Eye, EyeOff, Pencil, Plus, Sparkles, SquarePen, Trash2 } from "lucide-react";
+import ConfirmModal from "./ConfirmModal";
 import { formatMessageTime } from "../utils/datetime";
 
 const TITLE_KEY = "reportingagent:skill-conversation-titles";
@@ -59,6 +60,7 @@ export default function TeachAgentModal({
   if (!open) return null;
 
   const [skillsSidebarHidden, setSkillsSidebarHidden] = useState(false);
+  const [skillDeleteOpen, setSkillDeleteOpen] = useState(false);
   const [skillTitles, setSkillTitles] = useState(() => loadStoredSkillTitles());
   const [conversationTitles, setConversationTitles] = useState(() => loadStoredTitles());
   const isSkillEditingView = !!activeSkillId;
@@ -265,11 +267,7 @@ export default function TeachAgentModal({
                     </button>
                     <button
                       className="btn-delete-skill icon-danger-btn"
-                      onClick={() => {
-                        if (!isSkillEditingView) return;
-                        const confirmed = window.confirm("Delete this skill and all its skill conversations?");
-                        if (confirmed) onDeleteSkill();
-                      }}
+                      onClick={() => setSkillDeleteOpen(true)}
                       disabled={!isSkillEditingView || deleteSkillLoading}
                       title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
                       aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
@@ -315,6 +313,19 @@ export default function TeachAgentModal({
           {teachStatus && <div className={`teach-status ${teachStatus.type}`}>{teachStatus.text}</div>}
         </div>
       </section>
+
+      <ConfirmModal
+        open={skillDeleteOpen}
+        title="Delete Skill"
+        message="Delete this skill and all its skill conversations?"
+        confirmLabel="Delete Skill"
+        loading={deleteSkillLoading}
+        onCancel={() => setSkillDeleteOpen(false)}
+        onConfirm={async () => {
+          await onDeleteSkill();
+          setSkillDeleteOpen(false);
+        }}
+      />
     </div>
   );
 }

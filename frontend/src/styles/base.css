@@ -363,6 +363,47 @@ h2 {
   padding: 0;
 }
 
+.confirm-backdrop {
+  z-index: 100;
+}
+
+.confirm-modal {
+  width: min(92vw, 420px);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: var(--shadow-2);
+  padding: 18px;
+}
+
+.confirm-modal h3 {
+  margin: 0;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.confirm-modal p {
+  margin: 10px 0 0;
+  color: var(--subtext);
+}
+
+.confirm-actions {
+  margin-top: 16px;
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.confirm-danger {
+  background: #c93434;
+  border-color: #c93434;
+}
+
+.confirm-danger:hover:not(:disabled) {
+  background: #b32828;
+  border-color: #b32828;
+}
+
 @media (max-width: 1080px) {
   .layout {
     grid-template-columns: 1fr;
