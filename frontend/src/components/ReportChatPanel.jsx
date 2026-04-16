@@ -2,15 +2,9 @@ import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Bot, Pencil, SquarePen } from "lucide-react";
+import { formatMessageTime } from "../utils/datetime";
 
 const TITLE_KEY = "reportingagent:conversation-titles";
-
-function formatTime(dateText) {
-  if (!dateText) return "";
-  const d = new Date(dateText);
-  if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-}
 
 function loadStoredTitles() {
   try {
@@ -119,7 +113,7 @@ export default function ReportChatPanel({
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
                 )}
               </div>
-              <div className="message-meta">{formatTime(msg.created_at)}</div>
+              <div className="message-meta" title={msg.created_at || ""}>{formatMessageTime(msg.created_at)}</div>
             </div>
           ))
         )}
