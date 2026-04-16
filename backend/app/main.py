@@ -54,12 +54,7 @@ from langfuse import get_client
 from contextlib import asynccontextmanager
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-
-    # --- startup logic ---
-    OpenAIAgentsInstrumentor().instrument()
-
+def _log_langfuse_readiness() -> None:
     langfuse = get_client()
     try:
         if langfuse.auth_check():
@@ -68,6 +63,14 @@ async def lifespan(app: FastAPI):
             print("Langfuse authentication failed. Continuing without blocking startup.")
     except Exception as exc:
         print(f"Langfuse check failed ({exc}). Continuing startup without Langfuse readiness check.")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+
+    # --- startup logic ---
+    OpenAIAgentsInstrumentor().instrument()
+    _log_langfuse_readiness()
 
     yield  # <-- app is running here
 
@@ -179,7 +182,7 @@ def create_conversation(report_id: int) -> Conversation:
 def list_conversation_messages(conversation_id: int) -> List[Message]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
-            conversation = get_conversation(cur, conversation_id)
+            get_conversation(cur, conversation_id)
             cur.execute(
                 """
                 SELECT m.id, c.report_id, m.role, m.content, m.created_at
@@ -191,7 +194,6 @@ def list_conversation_messages(conversation_id: int) -> List[Message]:
                 (conversation_id,),
             )
             rows = cur.fetchall()
-    _ = conversation
     return [Message(**row) for row in rows]
 
 
