@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
 
 export default function TeachAgentModal({
   open,
@@ -73,11 +74,12 @@ export default function TeachAgentModal({
               )}
             </select>
             <button
+              className="icon-action-btn"
               onClick={onCreateSkillConversation}
               title="New skill conversation"
               aria-label="New skill conversation"
             >
-              <span role="img" aria-hidden="true">✏️</span>
+              <Pencil size={16} strokeWidth={2} aria-hidden="true" />
             </button>
           </div>
         </div>
@@ -131,7 +133,11 @@ export default function TeachAgentModal({
               title={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
               aria-label={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
             >
-              <span role="img" aria-hidden="true">🛠️</span>
+              {skillsSidebarHidden ? (
+                <Eye size={16} strokeWidth={2} aria-hidden="true" />
+              ) : (
+                <EyeOff size={16} strokeWidth={2} aria-hidden="true" />
+              )}
             </button>
             <h2>
               Teach the Agent
@@ -161,7 +167,7 @@ export default function TeachAgentModal({
                       title={createSkillLoading ? "Creating skill..." : "Create new skill"}
                       aria-label={createSkillLoading ? "Creating skill" : "Create new skill"}
                     >
-                      {createSkillLoading ? "…" : "+"}
+                      {createSkillLoading ? "…" : <Plus size={16} strokeWidth={2} aria-hidden="true" />}
                     </button>
                     <button
                       className="btn-delete-skill icon-danger-btn"
@@ -174,7 +180,7 @@ export default function TeachAgentModal({
                       title={deleteSkillLoading ? "Deleting skill..." : "Delete skill"}
                       aria-label={deleteSkillLoading ? "Deleting skill" : "Delete skill"}
                     >
-                      {deleteSkillLoading ? "…" : "🗑"}
+                      {deleteSkillLoading ? "…" : <Trash2 size={16} strokeWidth={2} aria-hidden="true" />}
                     </button>
                   </div>
                 </div>

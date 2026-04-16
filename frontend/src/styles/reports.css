@@ -1,6 +1,6 @@
 .app-shell {
   height: 100vh;
-  padding: 16px;
+  padding: var(--space-5);
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -14,71 +14,91 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
-  padding: 14px 18px;
-  margin-bottom: 12px;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-4);
   border: 1px solid var(--line);
-  border-radius: 18px;
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  background: var(--panel);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
+  border-radius: var(--radius-lg);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-1);
 }
 
 .topbar-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: var(--space-3);
   min-width: 0;
 }
 
 .app-title {
   margin: 0;
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 600;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
   white-space: nowrap;
 }
 
 .app-title-brand {
-  color: #0b3a68;
+  color: var(--text);
 }
 
 .app-title-report {
-  color: #0071e3;
-}
-
-.icon-btn {
-  width: 44px;
-  height: 36px;
-  font-size: 19px;
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.72);
-  cursor: pointer;
+  color: var(--accent);
 }
 
 .view-controls {
   display: flex;
+  align-items: center;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .teach-btn {
-  background: linear-gradient(180deg, #0f766e 0%, #115e59 100%);
-  border-color: transparent;
+  background: var(--accent);
+  border-color: var(--accent);
   color: #ffffff;
 }
 
-.teach-btn:hover {
-  border-color: transparent;
-  box-shadow: 0 6px 16px rgba(15, 118, 110, 0.28);
-  filter: brightness(1.03);
+.teach-btn:hover:not(:disabled) {
+  border-color: #0062c4;
+  background: #0068d1;
+  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.28);
+}
+
+.segmented-control {
+  display: inline-flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px;
+}
+
+.segmented-control .segment {
+  border: none;
+  background: transparent;
+  padding: 8px 12px;
+  min-width: 74px;
+  border-radius: 999px;
+  color: var(--subtext);
+  box-shadow: none;
+}
+
+.segmented-control .segment:hover:not(:disabled) {
+  background: rgba(17, 24, 39, 0.04);
+}
+
+.segmented-control .segment.active {
+  background: var(--bg-solid);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
 }
 
 .layout {
   display: grid;
-  gap: 12px;
+  gap: var(--space-4);
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -112,47 +132,57 @@
 .sidebar li button {
   width: 100%;
   text-align: left;
-  border-radius: 12px;
+  border-radius: var(--radius-sm);
   margin-bottom: 6px;
+  background: transparent;
 }
 
 .sidebar li button.active {
-  background: linear-gradient(180deg, #0a84ff 0%, #0071e3 100%);
-  color: #fff;
-  border-color: transparent;
+  background: rgba(0, 113, 227, 0.12);
+  color: #004b97;
+  border-color: rgba(0, 113, 227, 0.28);
 }
 
 .conversation-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: var(--space-2);
 }
 
 .conversation-controls select {
   min-width: 180px;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.88);
-  color: var(--text);
 }
 
 .chat-messages {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
   padding-left: 12px;
   padding-right: 12px;
 }
 
 .btn-delete-report {
-  background: linear-gradient(180deg, #ef4444 0%, #dc2626 100%);
-  color: #ffffff;
-  border-color: transparent;
+  color: var(--danger);
 }
 
 .btn-send-report {
-  background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%);
+  background: var(--accent);
   color: #ffffff;
-  border-color: transparent;
+  border-color: var(--accent);
+}
+
+.btn-send-report:hover:not(:disabled) {
+  border-color: #0062c4;
+  background: #0068d1;
+}
+
+@media (max-width: 1080px) {
+  .topbar {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .app-title {
+    font-size: 22px;
+  }
 }

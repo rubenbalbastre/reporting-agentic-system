@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Pencil } from "lucide-react";
 
 export default function ReportChatPanel({
   activeReportId,
@@ -33,12 +34,13 @@ export default function ReportChatPanel({
             )}
           </select>
           <button
+            className="icon-action-btn"
             onClick={onCreateConversation}
             disabled={!activeReportId}
             title="New conversation"
             aria-label="New conversation"
           >
-            <span role="img" aria-hidden="true">✏️</span>
+            <Pencil size={16} strokeWidth={2} aria-hidden="true" />
           </button>
         </div>
       </div>
@@ -48,9 +50,7 @@ export default function ReportChatPanel({
             {msg.status === "pending" ? (
               "Thinking..."
             ) : (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {msg.content || ""}
-              </ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
             )}
           </div>
         ))}

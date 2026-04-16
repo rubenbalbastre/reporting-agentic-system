@@ -1,5 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { BookOpen, Pencil, Plus, Trash2 } from "lucide-react";
 import ReportChatPanel from "./components/ReportChatPanel";
 import TeachAgentModal from "./components/TeachAgentModal";
 import { api } from "./api";
@@ -31,7 +32,7 @@ export default function App() {
       <header className="topbar">
         <div className="topbar-left">
           <button className="icon-btn" title="Toggle Reports" onClick={() => report.setSidebarVisible((v) => !v)}>
-            📚
+            <BookOpen size={18} strokeWidth={2} aria-hidden="true" />
           </button>
           <h1 className="app-title">
             <span className="app-title-brand">Intelligent Report</span>
@@ -42,9 +43,26 @@ export default function App() {
           <button className="teach-btn" onClick={() => skill.setTeachModalOpen(true)}>
             Teach the Agent
           </button>
-          <button onClick={() => report.setViewMode(VIEW.ORIGINAL)}>Original View</button>
-          <button onClick={() => report.setViewMode(VIEW.REPORT)}>Expand Report</button>
-          <button onClick={() => report.setViewMode(VIEW.CHAT)}>Expand Chat</button>
+          <div className="segmented-control" role="group" aria-label="View mode">
+            <button
+              className={report.viewMode === VIEW.ORIGINAL ? "segment active" : "segment"}
+              onClick={() => report.setViewMode(VIEW.ORIGINAL)}
+            >
+              Original
+            </button>
+            <button
+              className={report.viewMode === VIEW.REPORT ? "segment active" : "segment"}
+              onClick={() => report.setViewMode(VIEW.REPORT)}
+            >
+              Report
+            </button>
+            <button
+              className={report.viewMode === VIEW.CHAT ? "segment active" : "segment"}
+              onClick={() => report.setViewMode(VIEW.CHAT)}
+            >
+              Chat
+            </button>
+          </div>
         </div>
       </header>
 
@@ -60,7 +78,7 @@ export default function App() {
                   title="New report"
                   aria-label="New report"
                 >
-                  +
+                  <Plus size={16} strokeWidth={2} aria-hidden="true" />
                 </button>
                 <button
                   className="icon-action-btn"
@@ -69,7 +87,7 @@ export default function App() {
                   title="Rename report"
                   aria-label="Rename report"
                 >
-                  ✎
+                  <Pencil size={16} strokeWidth={2} aria-hidden="true" />
                 </button>
                 <button
                   className="btn-delete-report icon-danger-btn"
@@ -82,7 +100,7 @@ export default function App() {
                   title={report.deleteReportLoading ? "Deleting report..." : "Delete report"}
                   aria-label={report.deleteReportLoading ? "Deleting report" : "Delete report"}
                 >
-                  {report.deleteReportLoading ? "…" : "🗑"}
+                  {report.deleteReportLoading ? "…" : <Trash2 size={16} strokeWidth={2} aria-hidden="true" />}
                 </button>
               </div>
             </div>
