@@ -11,8 +11,10 @@ from app.utils.skill_utils import (
     persist_skill_message_pair,
 )
 from app.utils.skills import (
+    ensure_child_dir,
     create_skill_from_agent_output,
     create_skill_from_request,
+    get_main_agent_skills_drafts_root,
     publish_skill_draft,
     slugify,
 )
@@ -20,7 +22,11 @@ from app.utils.skills import (
 
 async def teach_and_create_skill(content: str) -> dict[str, str]:
     try:
-        skill_agent = build_skill_agent(skill_session_id="skill_quick_teach")
+        quick_workspace = str(ensure_child_dir(get_main_agent_skills_drafts_root(), "skill_quick_teach"))
+        skill_agent = build_skill_agent(
+            skill_session_id="skill_quick_teach",
+            workspace_path=quick_workspace,
+        )
         result = await Runner.run(skill_agent, content)
         parsed = parse_skill_agent_output(str(result.final_output))
 

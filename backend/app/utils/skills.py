@@ -15,6 +15,26 @@ def get_main_agent_skills_drafts_root() -> Path:
     return Path(os.getenv("MAIN_AGENT_SKILLS_DRAFTS_ROOT", "/data/shared/skills_drafts")).resolve()
 
 
+def ensure_child_dir(root: Path, child_name: str) -> Path:
+    root = root.resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    child_dir = (root / child_name).resolve()
+    if child_dir.parent != root:
+        raise ValueError("Invalid child directory path")
+    child_dir.mkdir(parents=True, exist_ok=True)
+    return child_dir
+
+
+def ensure_draft_skill_md(slug: str) -> Path:
+    draft_dir = ensure_child_dir(get_main_agent_skills_drafts_root(), slug)
+    skill_md_path = (draft_dir / "SKILL.md").resolve()
+    if skill_md_path.parent != draft_dir:
+        raise ValueError("Invalid skill markdown path")
+    if not skill_md_path.exists():
+        skill_md_path.write_text("", encoding="utf-8")
+    return skill_md_path
+
+
 def slugify(text: str, max_len: int = 50) -> str:
     lowered = text.lower()
     cleaned = re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
@@ -52,13 +72,8 @@ def _ensure_frontmatter(skill_markdown: str, skill_name: str, description: str) 
     )
 
 
-def create_skill_from_agent_output(skill_name: str, description: str, skill_markdown: str) -> dict[str, str]:
-    root = get_main_agent_skills_root()
-    root.mkdir(parents=True, exist_ok=True)
-
-    base_name = slugify(skill_name)
+def _allocate_unique_skill_dir(root: Path, base_name: str) -> tuple[str, Path]:
     dir_name = base_name
-
     skill_dir = (root / dir_name).resolve()
     if skill_dir.parent != root:
         raise ValueError("Invalid skill directory")
@@ -69,6 +84,15 @@ def create_skill_from_agent_output(skill_name: str, description: str, skill_mark
         if skill_dir.parent != root:
             raise ValueError("Invalid skill directory")
     skill_dir.mkdir(parents=True, exist_ok=False)
+    return dir_name, skill_dir
+
+
+def create_skill_from_agent_output(skill_name: str, description: str, skill_markdown: str) -> dict[str, str]:
+    root = get_main_agent_skills_root()
+    root.mkdir(parents=True, exist_ok=True)
+
+    base_name = slugify(skill_name)
+    dir_name, skill_dir = _allocate_unique_skill_dir(root, base_name)
 
     safe_name = slugify(skill_name) or "custom-instruction"
     safe_description = description.strip() or "User-taught behavior for reporting tasks."
@@ -90,18 +114,7 @@ def create_skill_from_request(request_text: str) -> dict[str, str]:
     root.mkdir(parents=True, exist_ok=True)
 
     base_name = slugify(request_text)
-    dir_name = base_name
-
-    skill_dir = (root / dir_name).resolve()
-    if skill_dir.parent != root:
-        raise ValueError("Invalid skill directory")
-    if skill_dir.exists():
-        suffix = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-        dir_name = f"{base_name}-{suffix}"
-        skill_dir = (root / dir_name).resolve()
-        if skill_dir.parent != root:
-            raise ValueError("Invalid skill directory")
-    skill_dir.mkdir(parents=True, exist_ok=False)
+    dir_name, skill_dir = _allocate_unique_skill_dir(root, base_name)
 
     content = build_skill_markdown(request_text)
     skill_md_path = skill_dir / "SKILL.md"

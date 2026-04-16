@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException
+from pathlib import Path
 
 from app.schemas import (
     CreateMessageRequest,
@@ -22,6 +23,7 @@ from app.utils.skill_utils import (
     delete_skill_filesystem,
     get_skill,
     get_skill_conversation,
+    is_published_skill_path,
     list_skill_folder_files,
     open_published_skill_in_draft,
     read_skill_markdown,
@@ -61,6 +63,14 @@ def get_skill_markdown(skill_id: int) -> dict[str, str]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             skill = get_skill(cur, skill_id)
+            raw = (skill.get("skill_md_path") or "").strip()
+            if raw and not is_published_skill_path(raw):
+                # Auto-heal missing draft file on read.
+                path = Path(raw).resolve()
+                path.parent.mkdir(parents=True, exist_ok=True)
+                if not path.exists():
+                    path.write_text("", encoding="utf-8")
+                    conn.commit()
     return {"content": read_skill_markdown(skill)}
 
 
