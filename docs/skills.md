@@ -16,8 +16,7 @@ Key design decision:
 - Main interface agent does not directly consume shared skills; the worker code executor does.
 
 Current agent roles:
-- `skill_chat_agent` (`gpt-5.4-nano`) powers skill teaching chat turns.
-- `skill_agent` (`gpt-5.4-nano`) generates publish payload JSON (`skill_name`, `description`, `skill_markdown`).
+- `main_skill_agent` (`gpt-5.4-mini`) orchestrates skill generation and can call only the worker code executor.
 
 ## Storage
 

@@ -10,7 +10,7 @@ from fastapi import HTTPException
 from app.utils.db import get_db_connection
 from app.schemas import SkillMessage
 from app.utils.chat_input import build_chat_input
-from app.utils.skills import slugify
+from app.utils.skills import get_main_agent_skills_drafts_root, get_main_agent_skills_root, slugify
 
 
 def get_skill(cur: Any, skill_id: int) -> dict[str, Any]:
@@ -79,10 +79,11 @@ def build_skill_chat_input(
     )
 
 
-def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, list[dict[str, Any]]]:
+def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, str, list[dict[str, Any]]]:
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             convo = get_skill_conversation(cur, skill_conversation_id)
+            skill = get_skill(cur, convo["skill_id"])
             cur.execute(
                 """
                 SELECT role, content
@@ -92,7 +93,43 @@ def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, li
                 """,
                 (skill_conversation_id,),
             )
-            return convo["skill_id"], cur.fetchall()
+            return convo["skill_id"], skill["skill_md_path"], cur.fetchall()
+
+
+def is_published_skill_path(skill_md_path: str) -> bool:
+    path = Path(skill_md_path).resolve()
+    published_root = get_main_agent_skills_root()
+    drafts_root = get_main_agent_skills_drafts_root()
+    in_published = path == published_root or published_root in path.parents
+    in_drafts = path == drafts_root or drafts_root in path.parents
+    return in_published and not in_drafts
+
+
+def open_published_skill_in_draft(skill_id: int) -> dict[str, Any]:
+    with get_db_connection() as conn:
+        with conn.cursor() as cur:
+            source = get_skill(cur, skill_id)
+
+        if not is_published_skill_path((source.get("skill_md_path") or "").strip()):
+            raise HTTPException(status_code=400, detail="Only published skills can be opened in draft")
+
+        draft_name = f"{source['name']} Draft"
+        draft = create_skill_row(name=draft_name, description=source.get("description") or "")
+
+    source_md = Path((source.get("skill_md_path") or "").strip()).resolve()
+    source_dir = source_md.parent
+    draft_md = Path((draft.get("skill_md_path") or "").strip()).resolve()
+    draft_dir = draft_md.parent
+
+    if not source_md.exists() or not source_md.is_file():
+        raise HTTPException(status_code=404, detail="Published SKILL.md file not found")
+
+    # Replace initial empty draft folder with a full copy of the published package.
+    if draft_dir.exists():
+        shutil.rmtree(draft_dir, ignore_errors=True)
+    shutil.copytree(source_dir, draft_dir)
+
+    return draft
 
 
 def _insert_skill_message(
@@ -149,6 +186,32 @@ def create_skill_row(name: str, description: str = "") -> dict[str, Any]:
                     slug = f"{base_slug}-{suffix}"
             if row is None:
                 raise HTTPException(status_code=500, detail="Failed to create skill")
+
+            # Create draft SKILL.md immediately so publish updates this same file.
+            skills_root = get_main_agent_skills_drafts_root()
+            skills_root.mkdir(parents=True, exist_ok=True)
+            skill_dir = (skills_root / slug).resolve()
+            if skill_dir.parent != skills_root:
+                raise HTTPException(status_code=500, detail="Invalid skill draft path")
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            skill_md_path = (skill_dir / "SKILL.md").resolve()
+            if skill_md_path.parent != skill_dir:
+                raise HTTPException(status_code=500, detail="Invalid skill markdown path")
+            if not skill_md_path.exists():
+                skill_md_path.write_text("", encoding="utf-8")
+
+            cur.execute(
+                """
+                UPDATE skills
+                SET skill_md_path = %s,
+                    updated_at = NOW()
+                WHERE id = %s
+                RETURNING id, name, description, slug, skill_md_path, created_at, updated_at;
+                """,
+                (str(skill_md_path), row["id"]),
+            )
+            row = cur.fetchone()
+
             cur.execute(
                 """
                 INSERT INTO skill_conversations (skill_id)
