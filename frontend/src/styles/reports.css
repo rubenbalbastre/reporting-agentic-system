@@ -25,11 +25,24 @@
   box-shadow: var(--shadow-1);
 }
 
+.topbar-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
 .topbar-left {
   display: flex;
   align-items: center;
   gap: var(--space-3);
   min-width: 0;
+}
+
+.topbar-utilities {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
 
 .app-title {
@@ -55,15 +68,7 @@
   gap: var(--space-2);
 }
 
-.teach-btn {
-  background: var(--accent);
-  border-color: var(--accent);
-  color: #ffffff;
-}
-
 .teach-btn:hover:not(:disabled) {
-  border-color: #0062c4;
-  background: #0068d1;
   box-shadow: 0 8px 18px rgba(0, 113, 227, 0.28);
 }
 
@@ -82,7 +87,7 @@
   padding: 8px 12px;
   min-width: 74px;
   border-radius: 999px;
-  color: var(--subtext);
+  color: #4f5358;
   box-shadow: none;
 }
 
@@ -161,28 +166,44 @@
   padding-right: 12px;
 }
 
-.btn-delete-report {
-  color: var(--danger);
+.chat-messages > .empty-state {
+  flex: 1;
+  min-height: 100%;
 }
 
-.btn-send-report {
-  background: var(--accent);
-  color: #ffffff;
-  border-color: var(--accent);
+.report-panel .markdown-content {
+  display: flex;
+  justify-content: center;
+}
+
+.report-panel .prose-container {
+  width: 100%;
+  max-width: 940px;
 }
 
 .btn-send-report:hover:not(:disabled) {
-  border-color: #0062c4;
-  background: #0068d1;
+  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
 }
 
-@media (max-width: 1080px) {
+@media (max-width: 1180px) {
   .topbar {
     align-items: flex-start;
     flex-direction: column;
   }
 
+  .topbar-main {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .app-title {
     font-size: 22px;
+  }
+}
+
+@media (max-width: 700px) {
+  .topbar-main {
+    align-items: flex-start;
+    flex-direction: column;
   }
 }

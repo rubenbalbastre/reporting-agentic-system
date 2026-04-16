@@ -1,6 +1,6 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Pencil } from "lucide-react";
+import { Bot, Pencil } from "lucide-react";
 
 export default function ReportChatPanel({
   activeReportId,
@@ -13,6 +13,8 @@ export default function ReportChatPanel({
   onConversationChange,
   onCreateConversation,
 }) {
+  const showEmptyState = !activeReportId || messages.length === 0;
+
   return (
     <section className="panel chat-panel">
       <div className="panel-head">
@@ -34,7 +36,7 @@ export default function ReportChatPanel({
             )}
           </select>
           <button
-            className="icon-action-btn"
+            className="icon-action-btn btn-ghost"
             onClick={onCreateConversation}
             disabled={!activeReportId}
             title="New conversation"
@@ -45,15 +47,25 @@ export default function ReportChatPanel({
         </div>
       </div>
       <div className="panel-content chat-messages">
-        {messages.map((msg) => (
-          <div key={msg.id} className={`message ${msg.role}`}>
-            {msg.status === "pending" ? (
-              "Thinking..."
-            ) : (
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
-            )}
+        {showEmptyState ? (
+          <div className="empty-state">
+            <Bot size={18} strokeWidth={2} aria-hidden="true" />
+            <p>{!activeReportId ? "Select a report to start chatting." : "Start your first conversation for this report."}</p>
+            <button className="btn-secondary" onClick={onCreateConversation} disabled={!activeReportId}>
+              New Conversation
+            </button>
           </div>
-        ))}
+        ) : (
+          messages.map((msg) => (
+            <div key={msg.id} className={`message ${msg.role}`}>
+              {msg.status === "pending" ? (
+                "Thinking..."
+              ) : (
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
+              )}
+            </div>
+          ))
+        )}
       </div>
       <div className="chat-input">
         <input
@@ -63,8 +75,9 @@ export default function ReportChatPanel({
           onKeyDown={(e) => {
             if (e.key === "Enter") onSendMessage();
           }}
+          disabled={!activeReportId}
         />
-        <button className="btn-send-report" onClick={onSendMessage}>Send</button>
+        <button className="btn-send-report btn-primary" onClick={onSendMessage} disabled={!activeReportId}>Send</button>
       </div>
     </section>
   );

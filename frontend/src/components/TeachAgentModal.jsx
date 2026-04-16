@@ -1,7 +1,7 @@
 import { useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Eye, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { Bot, Eye, EyeOff, Pencil, Plus, Sparkles, Trash2 } from "lucide-react";
 
 export default function TeachAgentModal({
   open,
@@ -74,7 +74,7 @@ export default function TeachAgentModal({
               )}
             </select>
             <button
-              className="icon-action-btn"
+              className="icon-action-btn btn-ghost"
               onClick={onCreateSkillConversation}
               title="New skill conversation"
               aria-label="New skill conversation"
@@ -84,11 +84,18 @@ export default function TeachAgentModal({
           </div>
         </div>
         <div className="teach-chat-box">
-          {skillMessages.map((msg) => (
-            <div key={msg.id} className={`message ${msg.role}`}>
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
+          {skillMessages.length === 0 ? (
+            <div className="empty-state compact">
+              <Bot size={18} strokeWidth={2} aria-hidden="true" />
+              <p>Ask what this skill should do, then refine with follow-up prompts.</p>
             </div>
-          ))}
+          ) : (
+            skillMessages.map((msg) => (
+              <div key={msg.id} className={`message ${msg.role}`}>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content || ""}</ReactMarkdown>
+              </div>
+            ))
+          )}
         </div>
         <div className="chat-input">
           <input
@@ -99,13 +106,13 @@ export default function TeachAgentModal({
               if (e.key === "Enter") onSendSkillMessage();
             }}
           />
-          <button className="btn-send-skill" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
+          <button className="btn-send-skill btn-primary" onClick={onSendSkillMessage} disabled={teachLoading || !activeSkillConversationId}>
             {teachLoading ? "Sending..." : "Send"}
           </button>
         </div>
         <div className="teach-actions">
           <button
-            className="btn-publish-skill"
+            className="btn-publish-skill btn-secondary"
             onClick={onPublishSkill}
             disabled={publishLoading || !activeSkillConversationId}
           >
@@ -128,7 +135,7 @@ export default function TeachAgentModal({
         <div className="panel-head">
           <div className="teach-head-left">
             <button
-              className="icon-action-btn skill-toggle-btn"
+              className="icon-action-btn skill-toggle-btn btn-ghost"
               onClick={() => setSkillsSidebarHidden((v) => !v)}
               title={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
               aria-label={skillsSidebarHidden ? "Show skills panel" : "Hide skills panel"}
@@ -149,7 +156,7 @@ export default function TeachAgentModal({
             </h2>
           </div>
           <div className="teach-header-actions">
-            <button onClick={onClose}>Close</button>
+            <button className="btn-ghost" onClick={onClose}>Close</button>
           </div>
         </div>
 
@@ -161,7 +168,7 @@ export default function TeachAgentModal({
                   <h3>Skills</h3>
                   <div className="sidebar-actions">
                     <button
-                      className="icon-action-btn"
+                      className="icon-action-btn btn-ghost"
                       onClick={handleCreateSkillClick}
                       disabled={createSkillLoading}
                       title={createSkillLoading ? "Creating skill..." : "Create new skill"}
@@ -187,7 +194,13 @@ export default function TeachAgentModal({
                 {skillsLoading ? (
                   <div className="skills-empty">Loading skills...</div>
                 ) : skills.length === 0 ? (
-                  <div className="skills-empty">No skills found yet.</div>
+                  <div className="empty-state compact">
+                    <Sparkles size={18} strokeWidth={2} aria-hidden="true" />
+                    <p>No skills yet. Create one to start teaching the agent.</p>
+                    <button className="btn-secondary" onClick={handleCreateSkillClick} disabled={createSkillLoading}>
+                      Create Skill
+                    </button>
+                  </div>
                 ) : (
                   <ul className="skills-list">
                     {skills.map((skill) => (
@@ -205,7 +218,17 @@ export default function TeachAgentModal({
               </div>
             )}
             <div className="teach-explore-main">
-              {isSkillEditingView ? skillWorkspace : <div className="skills-empty skill-empty-state">Select a skill or create a new one.</div>}
+              {isSkillEditingView ? (
+                skillWorkspace
+              ) : (
+                <div className="empty-state skill-empty-state">
+                  <Bot size={18} strokeWidth={2} aria-hidden="true" />
+                  <p>Select a skill or create a new one to begin.</p>
+                  <button className="btn-secondary" onClick={handleCreateSkillClick} disabled={createSkillLoading}>
+                    Create Skill
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

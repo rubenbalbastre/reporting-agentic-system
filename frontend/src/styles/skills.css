@@ -6,6 +6,7 @@
   place-items: center;
   padding: var(--space-4);
   z-index: 50;
+  animation: fade-in 220ms ease;
 }
 
 .teach-modal {
@@ -20,6 +21,7 @@
   box-shadow: var(--shadow-2);
   display: flex;
   flex-direction: column;
+  animation: modal-rise 240ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .teach-header-actions {
@@ -76,6 +78,7 @@
   padding: 8px 10px;
   background: rgba(255, 255, 255, 0.92);
   cursor: pointer;
+  transition: border-color 200ms ease, background-color 200ms ease;
 }
 
 .skills-item.active {
@@ -101,12 +104,6 @@
 
 .skill-empty-state {
   height: 100%;
-  display: grid;
-  place-items: center;
-  border: 1px dashed var(--line);
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, 0.68);
-  font-size: 14px;
 }
 
 .teach-explore-layout {
@@ -221,17 +218,9 @@
   padding-top: 12px;
 }
 
-.btn-send-skill,
-.btn-publish-skill {
-  background: var(--accent);
-  color: #ffffff;
-  border-color: var(--accent);
-}
-
 .btn-send-skill:hover:not(:disabled),
 .btn-publish-skill:hover:not(:disabled) {
-  border-color: #0062c4;
-  background: #0068d1;
+  box-shadow: 0 8px 18px rgba(0, 113, 227, 0.22);
 }
 
 .btn-delete-skill {
@@ -260,6 +249,22 @@
   color: #991b1b;
   background: rgba(220, 38, 38, 0.1);
   border: 1px solid rgba(220, 38, 38, 0.25);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes modal-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.995);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 @media (max-width: 1080px) {

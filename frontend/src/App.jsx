@@ -30,39 +30,44 @@ export default function App() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="topbar-left">
-          <button className="icon-btn" title="Toggle Reports" onClick={() => report.setSidebarVisible((v) => !v)}>
-            <BookOpen size={18} strokeWidth={2} aria-hidden="true" />
-          </button>
-          <h1 className="app-title">
-            <span className="app-title-brand">Intelligent Report</span>
-            {report.activeReportTitle ? <span className="app-title-report"> {report.activeReportTitle}</span> : null}
-          </h1>
-        </div>
-        <div className="view-controls">
-          <button className="teach-btn" onClick={() => skill.setTeachModalOpen(true)}>
-            Teach the Agent
-          </button>
+        <div className="topbar-main">
+          <div className="topbar-left">
+            <button className="icon-btn btn-ghost" title="Toggle Reports" onClick={() => report.setSidebarVisible((v) => !v)}>
+              <BookOpen size={18} strokeWidth={2} aria-hidden="true" />
+            </button>
+            <h1 className="app-title">
+              <span className="app-title-brand">Intelligent Report</span>
+              {report.activeReportTitle ? <span className="app-title-report"> {report.activeReportTitle}</span> : null}
+            </h1>
+          </div>
           <div className="segmented-control" role="group" aria-label="View mode">
             <button
               className={report.viewMode === VIEW.ORIGINAL ? "segment active" : "segment"}
+              aria-pressed={report.viewMode === VIEW.ORIGINAL}
               onClick={() => report.setViewMode(VIEW.ORIGINAL)}
             >
               Original
             </button>
             <button
               className={report.viewMode === VIEW.REPORT ? "segment active" : "segment"}
+              aria-pressed={report.viewMode === VIEW.REPORT}
               onClick={() => report.setViewMode(VIEW.REPORT)}
             >
               Report
             </button>
             <button
               className={report.viewMode === VIEW.CHAT ? "segment active" : "segment"}
+              aria-pressed={report.viewMode === VIEW.CHAT}
               onClick={() => report.setViewMode(VIEW.CHAT)}
             >
               Chat
             </button>
           </div>
+        </div>
+        <div className="topbar-utilities">
+          <button className="teach-btn btn-primary" onClick={() => skill.setTeachModalOpen(true)}>
+            Teach the Agent
+          </button>
         </div>
       </header>
 
@@ -73,7 +78,7 @@ export default function App() {
               <h2>Reports</h2>
               <div className="sidebar-actions">
                 <button
-                  className="icon-action-btn"
+                  className="icon-action-btn btn-ghost"
                   onClick={report.createReport}
                   title="New report"
                   aria-label="New report"
@@ -81,7 +86,7 @@ export default function App() {
                   <Plus size={16} strokeWidth={2} aria-hidden="true" />
                 </button>
                 <button
-                  className="icon-action-btn"
+                  className="icon-action-btn btn-ghost"
                   onClick={report.renameReport}
                   disabled={!report.activeReportId}
                   title="Rename report"
@@ -124,6 +129,7 @@ export default function App() {
             <div className="panel-head">
               <h2>Report Preview</h2>
               <button
+                className="btn-secondary"
                 onClick={report.exportReportPdf}
                 disabled={!report.activeReportId}
                 title="Export report as PDF"
@@ -133,14 +139,16 @@ export default function App() {
               </button>
             </div>
             <div className="panel-content markdown-content">
-              <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
-                components={{
-                  img: ({ src, alt }) => <img src={resolveMarkdownAssetUrl(src)} alt={alt || ""} />,
-                }}
-              >
-                {report.markdown}
-              </ReactMarkdown>
+              <div className="prose-container">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    img: ({ src, alt }) => <img src={resolveMarkdownAssetUrl(src)} alt={alt || ""} />,
+                  }}
+                >
+                  {report.markdown}
+                </ReactMarkdown>
+              </div>
             </div>
           </section>
         )}
