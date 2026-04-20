@@ -123,7 +123,7 @@ Reports:
 Skills:
 
 - “Teach the agent to always state assumptions and data caveats when generating charts.”
-- “Create a skill for structuring certain report in sections as summary, evidence, and conclusion.”
+- “Create a skill for structuring certain report in sections as title, summary, scope, insights, recommendations, functional details (assumptions, limitations), technical details (data sources, methodology).”
 - "Add {insert custom style} when generating sales figures".
 
 Useful commands:
