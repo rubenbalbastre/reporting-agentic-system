@@ -1,165 +1,211 @@
 # Skills
 
-This document describes the current shared Skills implementation.
+This document is the product-level entry point for the Skills experience.
 
-## Overview
+## What It Is
 
-Skills are reusable instructions learned through the `Teach the Agent` UI.
+Skills are reusable instructions that users teach once and the worker can reuse later.
 
-## Purpose
+In product terms, a skill is a packaged piece of guidance such as:
 
-Skills are the app's reusable behavior feature: they let users teach domain/process guidance once and persist it as shared instructions that worker agents can apply in future tasks.
+- how to analyze a recurring business question
+- how to structure a certain kind of report section
+- how to handle domain-specific constraints or edge cases
 
-Key design decision:
+Skills are not the main chat surface. They are reusable operational knowledge for future worker runs.
 
-- Skills are intended for worker agents (code executor flow).
-- Main interface agent does not directly consume shared skills; the worker code executor does.
+## Two User Entry Points
 
-Current agent roles:
-- `skill_agent` (`gpt-5.4-mini`) orchestrates skill generation and can call only the worker code executor.
+The Skills experience is intentionally split into two separate product modes:
 
-## Storage
+- `Teach the Agent`
+- `Skill Library`
 
-Skills are stored in the shared Docker volume:
+This separation is important.
 
-```text
-/data/shared/skills/<skill_slug>/SKILL.md
-```
+`Teach the Agent` is the editable draft workspace.
 
-Draft skills are created in an auxiliary shared directory and edited there until publish:
+`Skill Library` is the published, browse-oriented workspace.
 
-```text
-/data/shared/skills_drafts/<draft_slug>/SKILL.md
-```
+That split keeps experimentation and reuse separate.
 
-`/data/shared` is backed by Docker volume `shared_data`.
+## Teach the Agent
 
-## File Structure
+`Teach the Agent` is where users create and refine draft skills.
 
-Current implementation writes only one file:
+The modal is organized around:
 
-```text
-<skill_slug>/
-  SKILL.md
-```
+- a left sidebar with draft skills
+- a preview panel for the draft `SKILL.md`
+- a working chat used to refine the draft
 
-If a generated skill directory already exists, publish/create uses a timestamp suffix (for example `my-skill-20260415_102000`) to avoid collisions.
+Inside this mode, a user can:
 
-Future extension may include:
+- create a new draft skill
+- select an existing draft
+- delete a draft
+- open multiple conversations for the same draft
+- iterate on the draft in chat
+- publish the draft
 
-```text
-my-skill/
-  SKILL.md
-  scripts/
-  references/
-  assets/
-```
+The working chat is the main authoring surface. A good teaching loop is:
 
-## SKILL.md Format
-
-Frontmatter is assumed present and includes at least:
-
-- `name`
-- `description`
-
-Example:
-
-```md
----
-name: pdf-processing
-description: Extract PDF text, fill forms, merge files. Use when handling PDFs.
----
-
-# PDF Processing
-
-## When to use this skill
-Use this skill when the user needs to work with PDF files...
-```
-
-## Skill Data Model
-
-Database tables:
-
-- `skills` (master metadata)
-- `skill_conversations` (teaching chat sessions per skill)
-- `skill_messages` (chat history within a skill conversation)
-
-Relations:
-
-- `skills -> skill_conversations` (`ON DELETE CASCADE`)
-- `skill_conversations -> skill_messages` (`ON DELETE CASCADE`)
-
-Implementation details:
-- `POST /skills` creates a skill row with empty description and also creates one initial `skill_conversation`.
-- Skill markdown path (`skill_md_path`) remains empty until publish.
-
-
-## UX Flow
-
-The Skills UX is split into two entry points:
-
-- `Teach the Agent`: draft creation and iterative teaching with the skill agent.
-- `Skill Library`: published skills browsing and management.
-
-### Teach the Agent (Drafts)
-
-`Teach the Agent` opens an almost full-window editor with:
-
-- Left panel: draft skills list.
-- Center/right working area: draft `SKILL.md` preview and teaching chat.
-- Top actions: create draft, rename, delete, and publish.
+1. describe the goal of the skill
+2. add constraints and expected behavior
+3. add examples and edge cases
+4. iterate until the draft instructions are usable
+5. publish
 
 ![Teach the Agent Draft UI](images/ux_teach_skills.png)
 
-### Skill Library (Published)
+## Skill Library
 
-`Skill Library` shows published skills only:
+`Skill Library` is the browsing surface for published skills.
 
-- Left panel: published skills list.
-- Middle panel: `SKILL.md` content preview.
-- Right panel: idle folder tree preview for the selected skill package.
-- Actions include opening a published skill in draft mode for edits.
+In this mode, a user can:
+
+- browse published skills
+- read the published `SKILL.md`
+- inspect the skill package file tree
+- open a published skill in draft mode to make changes
+
+Published skills are treated as read-only in the UI. To modify one, the user opens it in draft and continues working there.
 
 ![Skill Library UI](images/ux_skills_library.png)
 
-Top-right controls:
+## Drafts vs Published Skills
 
-- `+` create a new skill draft
-- `🗑` delete selected skill
-- `Publish` publish selected draft
+This is the most important product distinction in the Skills feature.
 
-Behavior notes:
-- Draft and published views are separated in the UI to avoid mixing editing and browsing contexts.
-- Publish uses the selected skill conversation (or latest if none provided in API payload).
+Draft skills:
 
-## Publish Behavior
+- are editable
+- have a working chat
+- can have multiple conversations
+- are the place where iteration happens
 
-Publishing a skill:
+Published skills:
 
-1. Reads selected skill conversation messages.
-2. No agent is called during publish.
-3. Backend validates the draft `SKILL.md` frontmatter (`name`, `description`).
-4. Backend checks that no published skill with the same name/slug already exists.
-5. Backend moves the full draft folder from `skills_drafts/` to `skills/`.
-6. Backend updates `skills` table metadata and `skill_md_path`.
+- are meant for reuse, not direct editing
+- are shown in the library view
+- expose their package contents
+- must be reopened in draft mode for changes
 
-The publish endpoint updates:
-- `name`
-- `description`
-- `slug`
-- `skill_md_path`
-- `updated_at`
+The workflow is therefore:
 
-## Worker Consumption
+1. create or open a draft
+2. refine it through teaching chat
+3. publish it
+4. reuse it later through the worker
+5. if needed, reopen it as a draft and republish
 
-Worker `code_agent` can use:
-- `search_agent_skills(query)` to find skills by keyword in id/frontmatter summary.
-- `read_agent_skill(skill_name)` to load a selected shared skill.
+## User Flow
 
-Current retrieval is simple keyword matching over skill identifiers and frontmatter-derived summaries.
+### Create a Draft
 
-## Current Limitations
+Creating a skill immediately creates:
 
-- Implementation is intentionally basic: only `SKILL.md` is generated.
-- No automatic generation of code examples or multi-file skill package content yet.
-- Skill retrieval is currently simplistic keyword matching (no semantic retrieval/RAG yet).
+- a skill record
+- an initial skill conversation
+- a draft `SKILL.md`
+
+This lets the user start iterating immediately.
+
+### Teach Through Chat
+
+The draft chat is where the user teaches the system what the skill should do.
+
+Useful inputs include:
+
+- the goal of the skill
+- the intended use cases
+- constraints and non-goals
+- edge cases
+- examples of good outputs
+
+Each message continues refining the same draft workspace.
+
+### Publish
+
+Publishing is the step that turns a draft into a reusable shared skill.
+
+At publish time:
+
+- the draft package is moved into the published skills area
+- the skill metadata is updated
+- the skill becomes visible in `Skill Library`
+
+The product intent is that publish is the moment where a private working draft becomes a reusable team asset.
+
+### Edit a Published Skill
+
+Published skills are not edited in place.
+
+Instead, the user:
+
+1. opens the skill in `Skill Library`
+2. clicks `Open in Draft`
+3. gets a new editable draft copy
+4. makes changes there
+5. publishes again
+
+This preserves a cleaner separation between reusable assets and ongoing work.
+
+## What The User Sees
+
+In draft mode:
+
+- the preview shows the current draft markdown
+- the chat remains active
+- `Publish` is available
+
+In published mode:
+
+- the preview shows the published markdown
+- the file tree is visible
+- the chat is hidden
+- `Open in Draft` replaces editing actions
+
+## What Gets Persisted
+
+Skills persist in two forms:
+
+- relational state in PostgreSQL
+- files in the shared workspace
+
+Database entities:
+
+- `skills`
+- `skill_conversations`
+- `skill_messages`
+
+Workspace layout:
+
+```text
+/data/shared/skills/<skill_slug>/SKILL.md
+/data/shared/skills_drafts/<draft_slug>/SKILL.md
+```
+
+In product terms:
+
+- the database stores the identity, metadata, and teaching history
+- the shared filesystem stores the actual skill package
+- draft and published skills live in different filesystem areas
+
+## How Skills Are Consumed
+
+Published skills are intended for the worker, not as direct chat personas for the main interface.
+
+That means the product value of Skills is indirect but important:
+
+- a user teaches a repeatable pattern once
+- the worker can later discover and apply that skill in future tasks
+
+This is why the Skills feature matters to the Reports experience even though it lives in a separate modal.
+
+## Limitations
+
+- The current product is centered on `SKILL.md`; richer multi-file packages are possible but not yet the main workflow.
+- Display titles edited in the UI are presentation-level labels, not a full persisted rename workflow.
+- The app does not currently detect duplicate skills during skill creation, so users can create drafts that overlap in purpose or content.
+- Skill retrieval is still simple; the worker does not use a more advanced retrieval layer yet.

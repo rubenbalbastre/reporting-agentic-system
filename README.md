@@ -4,24 +4,28 @@ This is an agentic reporting app that turns chat requests into iterative markdow
 
 ## Product Overview
 
-It is built around one practical loop: ask questions in chat, generate analysis and artifacts with agents, and keep a living markdown deliverable that improves turn by turn.
+It is built around two connected product loops:
+
+- Reports: ask questions in chat, generate analysis and artifacts with agents, and keep a living markdown deliverable that improves turn by turn.
+- Skills: teach reusable guidance once, publish it, and let the worker reuse that knowledge in future tasks.
 
 ### Reports
 
-Reports are the main output surface. Each report has a persistent workspace (`report_<id>`) where `report.md` and generated files evolve over time.
+Reports are the main output surface. Each report is a persistent markdown workspace where `report.md` and generated files evolve over time.
 
 <img src="docs/images/ux_reports.png" alt="ReportingAgent Reports UI" width="900" />
 
 The Reports experience is designed for iterative delivery:
 
-- Create, iterate, and delete reports from the UI.
-- Persist report conversations in Postgres (`reports -> conversations -> messages`).
-- Use backend + worker agent orchestration for report generation/refinement.
-- Work with any dataset, as long as it is accessible in a PostgreSQL database.
+- Create, rename, iterate, export, and delete reports from the UI.
+- Use multiple conversations per report without losing the underlying report workspace.
+- Review the live markdown preview while the agent updates the same report over time.
+- Use backend + worker agent orchestration for report generation and refinement.
+- Work with any dataset, as long as it is accessible in PostgreSQL.
 
 ### Skills
 
-Skills are the reusable behavior layer. Teams can teach guidance once and publish it as shared `SKILL.md` instructions for future worker runs.
+Skills are the reusable behavior layer. Teams can teach guidance once, refine it in draft, publish it, and let the worker reuse it in future tasks.
 
 Teach flow (draft creation and agent-assisted editing):
 
@@ -33,8 +37,9 @@ Library flow (published skill browsing and reuse):
 
 The Skills flow supports collaborative reuse:
 
-- Maintain shared skills with teaching chat and publish flow.
-- Persist skill conversations in Postgres (`skills -> skill_conversations -> skill_messages`).
+- Separate editable draft work (`Teach the Agent`) from browse-only published skills (`Skill Library`).
+- Maintain shared skills through draft chat, publish, and reopen-in-draft flows.
+- Persist skill teaching conversations in Postgres (`skills -> skill_conversations -> skill_messages`).
 
 ## Setup & Run
 
@@ -88,7 +93,7 @@ Run `make help` for full list.
 The app exposes:
 
 - Report APIs (create/delete reports, conversations, messages, markdown/pdf/files)
-- Skill APIs (teach/publish lifecycle and skill conversations)
+- Skill APIs (draft creation, teaching, publish, library, and skill conversations)
 - Health endpoints for backend and worker
 - A worker invoke endpoint used internally by backend orchestration
 
@@ -98,24 +103,28 @@ Data layout:
 /data/shared/jobs/report_<report_id>/
   report.md
   ...generated files
+/data/shared/skills_drafts/<draft_slug>/SKILL.md
 /data/shared/skills/<skill_slug>/SKILL.md
 ```
 
 - One report can have multiple conversations.
+- One skill can have multiple teaching conversations.
+- Draft and published skills live in different shared directories.
 - Deleting a report cascades to conversations/messages.
+- Deleting a skill cascades to teaching conversations/messages.
 - Workspace folder cleanup is best-effort.
 - `/data/shared` is backed by Docker volume `shared_data`.
 - `SKILL.md` requires YAML frontmatter (`name`, `description`) and markdown instructions.
 - Worker skill retrieval is keyword/frontmatter based (`search_agent_skills` + `read_agent_skill`).
 - All agentic traces are logged in Langfuse for further analysis and observability.
 
-For technical details:
+Documentation:
+- Product entry point for Reports UX: [docs/reports.md](docs/reports.md)
+- Product entry point for Skills UX: [docs/skills.md](docs/skills.md)
 - API reference: [docs/api.md](docs/api.md)
 - Database and storage: [docs/database.md](docs/database.md)
 - Agent architecture: [docs/agents.md](docs/agents.md)
 - Container architecture: [docs/container-architecture.md](docs/container-architecture.md)
-- Reports feature: [docs/reports.md](docs/reports.md)
-- Skills feature: [docs/skills.md](docs/skills.md)
 
 ## Repo Layout
 
