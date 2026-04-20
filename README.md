@@ -209,6 +209,7 @@ Documentation:
 ## Future Improvements
 
 - Add duplicate-skill detection or merge suggestions during skill creation
+- Organize Skills with a more structured taxonomy, such as subcategories or grouped library views
 - Improve skill retrieval beyond simple keyword and frontmatter matching
 - Support richer multi-file skill packages as a first-class workflow
 - Add stronger isolation for worker execution if the product moves beyond a simplification-first architecture
