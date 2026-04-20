@@ -28,7 +28,7 @@ class CodeAgentResult(BaseModel):
     summary: str
 
 
-def build_code_executor_agent(workspace_dir: str, task_type: Literal["report", "skill"] = "report") -> Agent:
+def build_code_agent(workspace_dir: str, task_type: Literal["report", "skill"] = "report") -> Agent:
     workspace = Path(workspace_dir).resolve()
     workspace.mkdir(parents=True, exist_ok=True)
     client = OpenAI()

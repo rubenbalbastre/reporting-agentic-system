@@ -8,7 +8,7 @@ from app.agents.prompts import build_reporting_agent_instructions
 
 def build_reporting_agent(report_id: int) -> Agent:
     @function_tool
-    def call_artifact_worker(content: str) -> str:
+    def call_worker_agent(content: str) -> str:
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")
         endpoint = f"{worker_url.rstrip('/')}/invoke"
         headers: dict[str, str] = {}
@@ -34,7 +34,7 @@ def build_reporting_agent(report_id: int) -> Agent:
                 tool_name="editor_agent",
                 tool_description="Tool to generate reports based on the user's question and results from the artifact worker."
             ),
-            call_artifact_worker,
+            call_worker_agent,
         ],
     )
     return agent
