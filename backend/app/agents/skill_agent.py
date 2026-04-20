@@ -7,6 +7,7 @@ from app.agents.prompts import build_skill_agent_instructions
 
 
 def build_skill_agent(skill_session_id: str, workspace_path: str) -> Agent:
+    """Build the backend agent that orchestrates one skill teaching session."""
     @function_tool
     def call_worker_agent(content: str) -> str:
         if not workspace_path:

@@ -92,8 +92,14 @@ make db-init
 
 - Frontend: `http://localhost:3001`
 - Backend API: `http://localhost:8000`
-- Worker API: `http://localhost:5000`
+- Worker API: `http://localhost:5000` (internal service, mainly for backend-to-worker calls)
 - Langfuse UI: `http://localhost:3002`
+
+Runtime note:
+
+- The backend installs Playwright Chromium at container startup because report PDF export depends on it.
+- First startup can therefore be noticeably slower than later runs.
+- If Playwright Chromium is unavailable or fails to install, the app can still run, but PDF export will fail.
 
 Suggested product walkthrough:
 

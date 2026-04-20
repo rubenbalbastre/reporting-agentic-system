@@ -98,6 +98,12 @@ Database init:
 
 - `make db-init` applies `infra/postgres/app_schema.sql` to app Postgres container.
 
+Runtime note:
+
+- The backend installs Playwright Chromium because PDF export is rendered there.
+- This makes first startup slower and adds an extra browser runtime dependency to the backend container.
+- If Chromium installation fails, the rest of the app may still run, but report PDF export will fail.
+
 ## Health and Dependency Behavior
 
 - `postgres` has a healthcheck (`pg_isready`).

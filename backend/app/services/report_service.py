@@ -13,10 +13,12 @@ from app.utils.report_utils import (
 
 
 async def export_report_pdf_bytes(report_id: int) -> bytes:
+    """Render the current report workspace markdown as PDF bytes."""
     return await render_report_pdf_bytes(report_id)
 
 
 async def run_report_conversation_turn(conversation_id: int, user_content: str) -> dict[str, list[Any]]:
+    """Run one report chat turn and persist both user and assistant messages."""
     report_id, history_rows = load_conversation_history(conversation_id)
     ensure_report_markdown_exists(report_id)
 

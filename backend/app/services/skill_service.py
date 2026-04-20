@@ -21,6 +21,7 @@ from app.utils.skills import (
 
 
 async def teach_and_create_skill(content: str) -> dict[str, str]:
+    """Create a shared skill directly from one teaching prompt."""
     try:
         quick_workspace = str(ensure_child_dir(get_main_agent_skills_drafts_root(), "skill_quick_teach"))
         skill_agent = build_skill_agent(
@@ -49,6 +50,7 @@ async def teach_and_create_skill(content: str) -> dict[str, str]:
 
 
 async def run_skill_conversation_turn(skill_conversation_id: int, user_content: str) -> dict[str, list[dict]]:
+    """Run one draft skill teaching turn and persist the chat pair."""
     skill_id, skill_md_path, history_rows = load_skill_conversation_history(skill_conversation_id)
     if is_published_skill_path(skill_md_path):
         raise HTTPException(status_code=400, detail="Published skill is read-only. Use 'Open in Draft' first.")
@@ -74,6 +76,7 @@ async def run_skill_conversation_turn(skill_conversation_id: int, user_content: 
 
 
 async def generate_published_skill(skill: dict, messages: list[dict]) -> tuple[dict[str, str], dict[str, str]]:
+    """Publish a draft skill package and compute the DB fields to update."""
     _ = messages
     skill_md_path = (skill.get("skill_md_path") or "").strip()
     if not skill_md_path:

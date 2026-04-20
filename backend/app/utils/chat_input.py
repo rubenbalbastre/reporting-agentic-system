@@ -4,6 +4,7 @@ from typing import Any
 def build_chat_input(
     prefix: str, history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
 ) -> list[dict[str, str]]:
+    """Build an Agents SDK message list from stored chat history plus the new user turn."""
     recent = history_rows[-max_messages:]
     messages: list[dict[str, str]] = [{"role": "system", "content": prefix}]
     messages.extend(

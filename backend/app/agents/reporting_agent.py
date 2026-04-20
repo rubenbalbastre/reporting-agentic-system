@@ -7,6 +7,7 @@ from app.agents.prompts import build_reporting_agent_instructions
 
 
 def build_reporting_agent(report_id: int) -> Agent:
+    """Build the backend agent that orchestrates one report conversation."""
     @function_tool
     def call_worker_agent(content: str) -> str:
         worker_url = os.getenv("ARTIFACT_WORKER_URL", "http://worker:5000")

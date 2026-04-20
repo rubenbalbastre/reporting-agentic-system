@@ -19,6 +19,7 @@ from app.utils.workspace_paths import get_report_markdown_path, get_report_works
 def build_agent_input(
     history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
 ) -> list[dict[str, str]]:
+    """Build the reporting agent input from recent conversation history."""
     return build_chat_input(
         "Use the conversation history to keep context consistent.\nConversation:",
         history_rows,
@@ -28,12 +29,14 @@ def build_agent_input(
 
 
 def ensure_report_exists(cur: Any, report_id: int) -> None:
+    """Raise `404` if the target report does not exist."""
     cur.execute("SELECT id FROM reports WHERE id = %s;", (report_id,))
     if cur.fetchone() is None:
         raise HTTPException(status_code=404, detail="Report not found")
 
 
 def get_conversation(cur: Any, conversation_id: int) -> dict[str, Any]:
+    """Fetch one conversation row or raise `404` if it is missing."""
     cur.execute(
         """
         SELECT id, report_id, created_at
@@ -49,6 +52,7 @@ def get_conversation(cur: Any, conversation_id: int) -> dict[str, Any]:
 
 
 def load_conversation_history(conversation_id: int) -> tuple[int, list[dict[str, Any]]]:
+    """Load the parent report id plus ordered message history for one conversation."""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             conversation = get_conversation(cur, conversation_id)
@@ -65,6 +69,7 @@ def load_conversation_history(conversation_id: int) -> tuple[int, list[dict[str,
 
 
 def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, content: str) -> dict[str, Any]:
+    """Insert one message row and shape it like the public `Message` schema."""
     cur.execute(
         """
         INSERT INTO messages (conversation_id, role, content)
@@ -79,6 +84,7 @@ def _insert_message(cur: Any, conversation_id: int, report_id: int, role: str, c
 def persist_message_pair_for_conversation(
     conversation_id: int, report_id: int, user_content: str, assistant_content: str
 ) -> tuple[Message, Message]:
+    """Persist the user/assistant pair produced by a report chat turn."""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             ensure_report_exists(cur, report_id)
@@ -91,6 +97,7 @@ def persist_message_pair_for_conversation(
 
 
 def write_report_markdown(report: Report) -> None:
+    """Write starter markdown for a report that does not yet have `report.md`."""
     report_path = get_report_markdown_path(report.id)
     content = (
         f"# {report.title}\n\n"
@@ -101,6 +108,7 @@ def write_report_markdown(report: Report) -> None:
 
 
 def ensure_report_markdown_exists(report_id: int) -> None:
+    """Create starter markdown if a report exists in DB but has no workspace file yet."""
     report_path = get_report_markdown_path(report_id)
     if report_path.exists():
         return
@@ -123,12 +131,14 @@ def ensure_report_markdown_exists(report_id: int) -> None:
 
 
 def read_report_markdown(report_id: int) -> str:
+    """Read the current report markdown, creating starter content if necessary."""
     ensure_report_markdown_exists(report_id)
     report_path = get_report_markdown_path(report_id)
     return report_path.read_text(encoding="utf-8")
 
 
 def report_markdown_to_html(report_id: int, content: str) -> str:
+    """Convert report markdown into printable HTML with local image assets inlined."""
     workspace = get_report_workspace(report_id).resolve()
     html_body = markdown(content, extensions=["tables", "fenced_code", "toc"])
 
@@ -209,6 +219,7 @@ def report_markdown_to_html(report_id: int, content: str) -> str:
 
 
 async def render_report_pdf_bytes(report_id: int) -> bytes:
+    """Render the current report markdown to PDF bytes via Playwright Chromium."""
     markdown_text = read_report_markdown(report_id)
     html_content = report_markdown_to_html(report_id, markdown_text)
 
@@ -229,6 +240,7 @@ async def render_report_pdf_bytes(report_id: int) -> bytes:
 
 
 def delete_report_workspace(report_id: int) -> None:
+    """Best-effort removal of a report workspace after DB deletion."""
     try:
         workspace_root = Path(os.getenv("WORKSPACE_ROOT", "/data/shared/jobs")).resolve()
         report_workspace = (workspace_root / f"report_{report_id}").resolve()

@@ -7,7 +7,7 @@ Use this as a concise developer reference. For product behavior and UX, start wi
 Base URLs in local Docker setup:
 
 - Backend API: `http://localhost:8000`
-- Worker API: `http://localhost:5000`
+- Worker API: `http://localhost:5000` (internal service)
 
 ## Backend API
 
@@ -110,6 +110,11 @@ Response:
 
 - `GET /reports/{report_id}/pdf`
   Export the current report as PDF.
+
+Notes:
+
+- This endpoint depends on Playwright Chromium in the backend runtime.
+- If Chromium is unavailable or broken, PDF export returns an error even if the rest of the app is healthy.
 
 - `GET /reports/{report_id}/files/{file_path}`
   Serve a file from the report workspace.

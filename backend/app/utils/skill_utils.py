@@ -56,6 +56,7 @@ def _ensure_draft_skill_file(cur: Any, skill: dict[str, Any]) -> dict[str, Any]:
 
 
 def get_skill(cur: Any, skill_id: int) -> dict[str, Any]:
+    """Fetch one skill row or raise `404` if it is missing."""
     cur.execute(
         """
         SELECT id, name, description, slug, skill_md_path, created_at, updated_at
@@ -71,6 +72,7 @@ def get_skill(cur: Any, skill_id: int) -> dict[str, Any]:
 
 
 def get_skill_conversation(cur: Any, skill_conversation_id: int) -> dict[str, Any]:
+    """Fetch one skill conversation row or raise `404` if it is missing."""
     cur.execute(
         """
         SELECT id, skill_id, created_at
@@ -86,6 +88,7 @@ def get_skill_conversation(cur: Any, skill_conversation_id: int) -> dict[str, An
 
 
 def read_skill_markdown(skill: dict[str, Any]) -> str:
+    """Read the current `SKILL.md` content for a draft or published skill."""
     raw_path = (skill.get("skill_md_path") or "").strip()
     if not raw_path:
         raise HTTPException(status_code=404, detail="Skill markdown has not been published yet")
@@ -97,6 +100,7 @@ def read_skill_markdown(skill: dict[str, Any]) -> str:
 
 
 def list_skill_folder_files(skill: dict[str, Any]) -> list[str]:
+    """List all files under a skill package directory as relative paths."""
     raw_path = (skill.get("skill_md_path") or "").strip()
     if not raw_path:
         raise HTTPException(status_code=404, detail="Skill markdown has not been published yet")
@@ -117,6 +121,7 @@ def list_skill_folder_files(skill: dict[str, Any]) -> list[str]:
 
 
 def parse_skill_agent_output(raw_output: str) -> dict[str, str]:
+    """Parse JSON-like skill agent output into normalized skill fields."""
     text = (raw_output or "").strip()
     if text.startswith("```"):
         text = text.strip("`")
@@ -133,6 +138,7 @@ def parse_skill_agent_output(raw_output: str) -> dict[str, str]:
 def build_skill_chat_input(
     history_rows: list[dict[str, Any]], user_content: str, max_messages: int = 20
 ) -> list[dict[str, str]]:
+    """Build the skill-teaching agent input from recent conversation history."""
     return build_chat_input(
         "Skill teaching conversation:",
         history_rows,
@@ -142,6 +148,7 @@ def build_skill_chat_input(
 
 
 def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, str, list[dict[str, Any]]]:
+    """Load skill id, current markdown path, and ordered chat history for one draft conversation."""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             convo = get_skill_conversation(cur, skill_conversation_id)
@@ -161,6 +168,7 @@ def load_skill_conversation_history(skill_conversation_id: int) -> tuple[int, st
 
 
 def is_published_skill_path(skill_md_path: str) -> bool:
+    """Return whether a skill path points at the published skills area rather than drafts."""
     path = Path(skill_md_path).resolve()
     published_root = get_main_agent_skills_root()
     drafts_root = get_main_agent_skills_drafts_root()
@@ -170,6 +178,7 @@ def is_published_skill_path(skill_md_path: str) -> bool:
 
 
 def open_published_skill_in_draft(skill_id: int) -> dict[str, Any]:
+    """Create a new draft skill row by copying a published skill package."""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             source = get_skill(cur, skill_id)
@@ -199,6 +208,7 @@ def open_published_skill_in_draft(skill_id: int) -> dict[str, Any]:
 def _insert_skill_message(
     cur: Any, skill_conversation_id: int, skill_id: int, role: str, content: str
 ) -> dict[str, Any]:
+    """Insert one skill message row and shape it like the public `SkillMessage` schema."""
     cur.execute(
         """
         INSERT INTO skill_messages (skill_conversation_id, role, content)
@@ -213,6 +223,7 @@ def _insert_skill_message(
 def persist_skill_message_pair(
     skill_conversation_id: int, skill_id: int, user_content: str, assistant_content: str
 ) -> tuple[SkillMessage, SkillMessage]:
+    """Persist the user/assistant pair produced by a skill teaching turn."""
     with get_db_connection() as conn:
         with conn.cursor() as cur:
             get_skill(cur, skill_id)
@@ -224,6 +235,7 @@ def persist_skill_message_pair(
 
 
 def create_skill_row(name: str, description: str = "") -> dict[str, Any]:
+    """Create a draft skill row, draft `SKILL.md`, and initial skill conversation."""
     base_slug = slugify(name)
     slug = base_slug
 
@@ -281,6 +293,7 @@ def create_skill_row(name: str, description: str = "") -> dict[str, Any]:
 
 
 def delete_skill_filesystem(skill: dict[str, Any]) -> None:
+    """Best-effort removal of a skill package directory after DB deletion."""
     raw_path = (skill.get("skill_md_path") or "").strip()
     if not raw_path:
         return
