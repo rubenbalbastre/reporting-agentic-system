@@ -1,175 +1,244 @@
 # Agents Architecture
 
-This document explains the current agent architecture used in the application.
+This document explains the current agent architecture behind ReportingAgent.
 
 ## Overview
 
-There are two agents which directly interact with the user: `reporting_agent` and `skill_agent`, which live in the backend project folder where the main API is implemented. We might refer to them in the further text as main agents. Here, also relies `editor_agent`, which is used as a tool by the `reportding_agent`. Both main use several tools and an agent as a tool named `worker_agent`, which has its own project folder `/worker/` and API.
+The system is organized around four agents:
 
-Then, the project contains four agents:
+- `reporting_agent`: owns the report chat experience
+- `skill_agent`: owns the skill teaching experience
+- `editor_agent`: edits report files safely inside one report workspace
+- `code_agent`: inspects data, writes code, runs Python, and produces artifacts inside the worker
 
-- `reporting_agent`: a report-editing agent. Owner of the Reports product part.
-- `skill_agent`: a skill-editing agent. Owner of the Skills product part.
-- `worker_agent`: a code agent which owns the creation of artifacts and any code scripts requires for the app to satisfy a user request.
-- `editor_agent`: an agent which edits the report based on worker_agent results and conversation context.
+The two user-facing agents live in the backend:
 
-## Agents
+- `reporting_agent`
+- `skill_agent`
 
-In this section, a technical description of each agent is provided.
+The execution-heavy agent lives in the worker service:
 
-### Report Agents
+- `code_agent`
 
-#### `reporting_agent`
+`editor_agent` is a specialized helper used by `reporting_agent`.
+
+## Agent Roles
+
+### `reporting_agent`
 
 - Built in `backend/app/agents/reporting_agent.py`
 - Model: `gpt-5.4-mini`
 - Purpose: orchestrate report responses from chat input
-- Tools:
-  - `editor_agent`: edits `report.md` and workspace files safely
-  - `worker_agent`: it is called thought a `POST (invoke)` request to the worker API.
+- Main tools:
+  - `editor_agent` for report and workspace updates
+  - worker invocation through `POST /invoke`
 
-#### `editor_agent`
+This agent is responsible for turning report chat messages into coordinated actions. It decides when a request needs:
+
+- direct report editing
+- data exploration or artifact generation in the worker
+- both
+
+### `editor_agent`
 
 - Built in `backend/app/agents/editor_agent.py`
 - Model: `gpt-5.4-mini`
-- Purpose: deterministic report/workspace editing for one report workspace
-- Key tools:
-  - `read_report`, `update_report`, `update_report_section`
-  - `list_files`, `read_file`, `replace_in_file`
-  - `build_report_file_url` (canonical `/reports/{id}/files/<path>` links)
-- Safety:
-  - all file paths resolve inside `report_<id>` workspace
-  - binary file reads are blocked (images can be uploaded for reasoning)
-  - image markdown paths are normalized to backend file URLs
+- Purpose: perform controlled edits inside a single report workspace
 
-### Skills Agents
+Key tools:
 
-#### `skill_agent` 
-- Built in `backend/app/agents/skill_agent.py
+- `read_report`
+- `update_report`
+- `update_report_section`
+- `list_files`
+- `read_file`
+- `replace_in_file`
+- `build_report_file_url`
+
+Safety properties:
+
+- all paths resolve inside `report_<id>`
+- binary file reads are blocked as text
+- images can be uploaded for visual reasoning when needed
+- markdown image paths are normalized to backend file URLs
+
+This separation keeps report editing deterministic and scoped, instead of giving the worker direct ownership of the final report markdown.
+
+### `skill_agent`
+
+- Built in `backend/app/agents/skill_agent.py`
 - Model: `gpt-5.4-mini`
-- Purpose: orchestrates skill generation and can only call the worker code executor tool (`POST /invoke`) with a skill session workspace.
-- Key tools:
+- Purpose: orchestrate skill teaching and draft refinement
+- Main tool:
+  - worker invocation through `POST /invoke`
 
+Unlike `reporting_agent`, `skill_agent` does not use a dedicated editor helper. Its role is narrower: it drives the teaching conversation and delegates code or file-oriented work to the worker in a skill workspace.
 
-### Cross Agents
-
-#### `code_agent`
+### `code_agent`
 
 - Built in `worker/app/agents/code_agent.py`
 - Model: `gpt-5.4-mini`
 - Triggered by worker `POST /invoke`
-- Purpose: inspect DB/files, write and run Python, generate report artifacts
-- Key tools:
-  - workspace file ops: `write_file`, `read_file`, `replace_in_file`, `list_files`
-  - execution: `run_python`
-  - PostgreSQL inspection: `get_database_schema`, `get_unique_values`, `get_column_stats`, `preview_table`
-  - shared skills: `search_agent_skills`, `read_agent_skill`
-- Output contract (`CodeAgentResult`):
-  - `status = needs_more_info` with clarification question + missing info list
-  - `status = ready_to_execute` with summary
+- Purpose: inspect data, write files, run Python, and generate artifacts
 
+Key tools:
+
+- workspace file operations:
+  - `write_file`
+  - `read_file`
+  - `replace_in_file`
+  - `list_files`
+- execution:
+  - `run_python`
+- PostgreSQL inspection:
+  - `get_database_schema`
+  - `get_unique_values`
+  - `get_column_stats`
+  - `preview_table`
+- shared skill access:
+  - `search_agent_skills`
+  - `read_agent_skill`
+
+Output contract:
+
+- `status = needs_more_info` with a clarification question and missing information list
+- `status = ready_to_execute` with a summary
 
 ## Workspaces
 
-Agents are connected to specific workspaces based on the Report they are working on. For the Report agent:
+Agents are connected to persistent workspaces.
+
+For reports:
+
 - `/data/shared/jobs/report_<report_id>/report.md`
-- generated artifacts (commonly under `figures/`)
-- other scripts
+- generated artifacts, commonly under `figures/`
+- helper scripts or temporary files created by the worker
 
-For Skills:
-- `/data/shared/skills/<skill_slug>/SKILL.md`
+For skills:
 
-For conversational data, postgres state:
-  - reports/conversations/messages
-  - skills/skill_conversations/skill_messages
+- draft skills: `/data/shared/skills_drafts/<draft_slug>/SKILL.md`
+- published skills: `/data/shared/skills/<skill_slug>/SKILL.md`
+
+Conversational state lives in PostgreSQL:
+
+- `reports -> conversations -> messages`
+- `skills -> skill_conversations -> skill_messages`
 
 ### Why a persistent worker container
 
 The worker was implemented as a persistent Docker service instead of spawning a fresh isolated container per task. The main reason was simplification:
 
-- much simpler orchestration from the backend, since every worker call is just `POST /invoke`
-- no extra container lifecycle management, cleanup, image coordination, or job queue was needed
-- easier local development and debugging because backend and worker behave like normal long-lived services
-- lower implementation overhead for an early version of the product
+- every worker call is just `POST /invoke`
+- no separate container lifecycle management or cleanup layer was needed
+- local development and debugging are much easier with a long-lived service
+- implementation overhead stayed low for an early product version
 
 This is not the strongest isolation model, but for this project the operational simplicity was worth more than per-task container isolation.
 
 ### Why shared Docker volumes
 
-Backend and worker communicate through the `shared_data` Docker volume mounted at `/data/shared`. This was selected as a pragmatic way to share report files, generated artifacts, and skill packages between services.
+Backend and worker communicate through the `shared_data` Docker volume mounted at `/data/shared`.
 
-The tradeoff is that Docker shared volumes are not especially fast, particularly for repeated small file operations. Even with that limitation, the approach was kept because it simplified the system considerably:
+This was chosen as a pragmatic way to share:
 
-- both services can read and write the same workspaces without building an extra storage API
+- report files
+- generated artifacts
+- skill packages
+- skill drafts
+
+The tradeoff is that Docker shared volumes are not especially fast, particularly for many small file operations. Even with that limitation, the approach was kept because it simplified the system substantially:
+
+- both services can read and write the same workspaces directly
 - report markdown, images, scripts, and skill files are immediately visible to both containers
-- implementation stayed easy to reason about because workspace paths are plain filesystem paths
+- the implementation stays easy to reason about because paths are ordinary filesystem paths
 - persistence across container restarts comes for free through the Docker volume
 
-In short, shared volumes were slower than a more specialized storage design, but good enough for the workload and much simpler to build and operate.
-
+In short, shared volumes were slower than a more specialized storage design, but they were good enough for the workload and much simpler to build and operate.
 
 ## Design Decisions
 
 ### Models
 
-Since this project prioritizes reproducibility in most environments as possible, closed-models where selected for this project. Due to my personal familiarity with OpenAI models I decided to go with it. However, Antrophic and other providers could have serve the same purpose.
+This project uses OpenAI models because the main goal was to build a reproducible agentic application quickly with tools and traces that were already familiar in this stack.
 
-From OpenAI models, I wanted to go with the SOTA (as-april-2026) so gpt-5.4 models family was chosen. I tried the nano and mini versions, having mini a best overall performance and balancing the cost/performance trade-off properly. Note that a message could cost approximately 0.04$ when starting a basic report from scrath with mini version. The larger version was not tested due to higher costs.
+The chosen family is `gpt-5.4`, mainly `gpt-5.4-mini`, because it provided the best balance of:
 
-An important reason to select those models was the will of using agent oriented models and not just intruction based ones. Note that the last families of GPT models are more oriented to agentic task and long-term runs.
+- capability
+- latency
+- cost
+
+The larger model was not adopted because the extra cost was not justified for the current scope.
 
 ### Framework
 
-Among Agents frameworks like LangGraph, this project uses OpenAI Agents SDK. Agents are executed until the stop using tools and generate a final output. This feature satisfied the project requirements and no extra complexity was required. Here, we also lie on the assumption of usage of OpenAI closed models. However, there no exist a critical reason not to change to other framework if desired.
+The project uses the OpenAI Agents SDK.
+
+The main reason was fit: the product needed agents that could run tools until they reached a final answer, without introducing a more complex orchestration framework than necessary. A framework such as LangGraph could also work here, but the current architecture did not require that extra complexity.
 
 ### Tools
 
-In other for the agents to have success they should mirror what an analyst would make One of the first things to provide is **access to explore the database** the agents are supposted to report on. To make this available several functions are provided:
+The worker tools were designed to mirror what an analyst would need in practice.
 
-- get_database_schema
-- get_unique_values
-- get_column_stats
-- preview_table
+For database understanding:
 
-Also, it requires to be able to **list, create, edit and delete files**, plus being able to execute code. For simplicity, it is only able to **run python code** so consequently it only generates python code. Full access to the shell commands was not provided since it was not needed.
+- `get_database_schema`
+- `get_unique_values`
+- `get_column_stats`
+- `preview_table`
 
-- write_file
-- read_file
-- replace_in_file
-- list_files
-- run_python
+For filesystem work:
 
-To **interact with the created Skills** in the app, there are defined two more tools for the worker agent to call:
+- `write_file`
+- `read_file`
+- `replace_in_file`
+- `list_files`
 
--  search_agent_skills,
--  read_agent_skill,
+For execution:
 
-### System Design
+- `run_python`
 
-#### Code agent: Planner + Executor (initial design) -> unified agent (final design)
+For shared skill reuse:
 
-At the beginning, the coding flow was designed with two specialized agents:
+- `search_agent_skills`
+- `read_agent_skill`
+
+The worker intentionally runs Python rather than exposing a general shell environment. That kept the system narrower, easier to reason about, and sufficient for the current workload.
+
+## System Design Decisions
+
+### Planner + Executor vs Unified `code_agent`
+
+An earlier design split the worker flow into:
 
 - a planner agent
 - an executor agent
 
-The goal was to separate reasoning/planning from implementation/execution.However, after roughly one week of trace analysis, results were not optimal in this project setup:
+That design increased handoffs and often repeated work without improving outcomes enough to justify the cost. In practice it led to:
 
-- repeated tool calls appeared frequently without adding new information
-- context was partially lost between agent handoffs/calls
-- extra round-trips increased latency and token usage
+- repeated tool calls
+- partial context loss between agent boundaries
+- extra latency and token cost
 
-In practice, this produced higher cost and slower responses, with inconsistent quality gains. The planner/executor split was replaced with a unified `code_agent`, which reduced:
+The final design uses one unified `code_agent`, which improved reliability and reduced overhead for this codebase.
 
-- end-to-end latency
-- token/call overhead (cost)
+### Database Agent vs Database Tools
 
-And it improved task outcomes for this codebase.
+An earlier design also included a dedicated database agent. That approach caused database exploration to happen more than once:
 
-#### Database Agent vs Database tools for Code Agent
+1. once in the database agent
+2. again in the code agent during real execution
 
-Initially, a database agent was defined to explore database and inform if a user query was possible to answer or not. However, this implementation implied that database was queried several times: 1) for the database agent to answer and 2) for the code agent to properly work on database data. For this reason, database agent was removed and their tools were given to the Code Agent.
+The final design removed the database agent and gave those capabilities directly to `code_agent`.
 
-#### Editor Agent
+### Why `editor_agent` Exists
 
-Editing a report which consists of processing markdown file and images (multi-modality implied) required specific context and tools which was simpler to have issolated to have a better tracebility. Despite, it might use more tokens that leaving the Code Agent to handle this it would have given too much context for the Code Agent to work. Since no critical latency and cost increase was found, this was the final choice. 
+Editing the final report is different from generating intermediate artifacts.
+
+Report editing involves:
+
+- structured markdown updates
+- section-aware changes
+- file references
+- image path normalization
+
+Keeping that work in `editor_agent` improved traceability and kept the worker focused on analysis and artifact generation. It may use more tokens than a single-agent design, but it produced a cleaner separation of concerns for this project.

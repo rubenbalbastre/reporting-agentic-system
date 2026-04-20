@@ -2,6 +2,8 @@
 
 This document lists the current HTTP API surface.
 
+Use this as a concise developer reference. For product behavior and UX, start with `docs/reports.md` and `docs/skills.md`.
+
 Base URLs in local Docker setup:
 
 - Backend API: `http://localhost:8000`

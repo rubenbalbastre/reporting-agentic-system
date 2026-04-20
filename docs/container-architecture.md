@@ -69,6 +69,7 @@ Core volumes:
 Shared filesystem conventions:
 
 - reports: `/data/shared/jobs/report_<id>/`
+- skill drafts: `/data/shared/skills_drafts/<draft_slug>/SKILL.md`
 - skills: `/data/shared/skills/<skill_slug>/SKILL.md`
 
 ## Runtime Communication
@@ -102,4 +103,3 @@ Database init:
 - `postgres` has a healthcheck (`pg_isready`).
 - `backend` and `worker` wait on healthy `postgres`.
 - Langfuse services use explicit health-based dependencies across postgres/minio/redis/clickhouse.
-
