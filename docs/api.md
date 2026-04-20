@@ -111,6 +111,11 @@ Response:
 - `GET /reports/{report_id}/pdf`
   Export the current report as PDF.
 
+Notes:
+
+- This endpoint depends on Playwright Chromium in the backend runtime.
+- If Chromium is unavailable or broken, PDF export returns an error even if the rest of the app is healthy.
+
 - `GET /reports/{report_id}/files/{file_path}`
   Serve a file from the report workspace.
 

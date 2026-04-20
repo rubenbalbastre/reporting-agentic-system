@@ -93,6 +93,8 @@ When the report is ready, the user can export it as PDF from the report preview 
 
 The PDF export is based on the current markdown state, so the preview and exported document are aligned.
 
+Under the hood, PDF export depends on Playwright Chromium in the backend runtime.
+
 ## UX Notes
 
 - `Original` shows the standard two-panel report + chat layout.
