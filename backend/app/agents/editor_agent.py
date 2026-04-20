@@ -8,7 +8,8 @@ from app.utils.workspace_paths import (
     get_report_markdown_path,
     resolve_workspace_relative_path,
 )
-from app.agents.prompts import build_report_agent_instructions
+from app.agents.prompts import build_editor_agent_instructions
+from app.utils.skills import read_existing_skill, search_existing_skills
 
 
 def build_editor_agent(report_id: int) -> Agent:
@@ -96,6 +97,36 @@ def build_editor_agent(report_id: int) -> Agent:
             return f"![{alt}]({normalized})"
 
         return re.sub(r"!\[([^\]]*)\]\(([^)]+)\)", _replace, text)
+
+    @function_tool
+    def search_report_structure(query: str) -> str:
+        """Search published skills for report-structure guidance and return the best matches."""
+        structure_query = " ".join(
+            part for part in ["report structure", (query or "").strip()] if part
+        )
+        matches = search_existing_skills(structure_query, limit=3)
+        if not matches:
+            return "No published report-structure skills found."
+
+        chunks: list[str] = []
+        for match in matches:
+            skill_id = match["skill_id"]
+            try:
+                content = read_existing_skill(skill_id)
+            except FileNotFoundError:
+                continue
+            chunks.append(
+                "\n".join(
+                    [
+                        f"SKILL_ID: {skill_id}",
+                        f"NAME: {match.get('name', '')}",
+                        f"DESCRIPTION: {match.get('description', '')}",
+                        "CONTENT:",
+                        content.strip(),
+                    ]
+                )
+            )
+        return "\n\n---\n\n".join(chunks) if chunks else "No published report-structure skills found."
 
     @function_tool
     def read_file(path: str) -> str:
@@ -285,9 +316,10 @@ def build_editor_agent(report_id: int) -> Agent:
 
     return Agent(
         name="editor_agent",
-        instructions=build_report_agent_instructions(report_id),
+        instructions=build_editor_agent_instructions(report_id),
         model="gpt-5.4-mini",
         tools=[
+            search_report_structure,
             read_report,
             list_files,
             read_file,
