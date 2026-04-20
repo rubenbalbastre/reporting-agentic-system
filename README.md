@@ -109,6 +109,23 @@ Suggested product walkthrough:
 4. Open `Teach the Agent`, create a draft skill, and refine it through chat.
 5. Publish the skill and verify it appears in `Skill Library`.
 
+## Example Prompts
+
+If you load the optional Olist dataset, these are good prompts to try.
+
+Reports:
+
+- “Analyze revenue by product category and add a chart with the top categories.”
+- “Compare order volume and average delivery time by Brazilian state.”
+- “Find the most common customer review complaints and summarize the main patterns.”
+- “Show the distribution of payment types and explain the main takeaways.”
+
+Skills:
+
+- “Teach the agent to always state assumptions and data caveats when generating charts.”
+- “Create a skill for structuring certain report in sections as summary, evidence, and conclusion.”
+- "Add {insert custom style} when generating sales figures".
+
 Useful commands:
 
 - `make up` / `make down` / `make ps` / `make logs`
