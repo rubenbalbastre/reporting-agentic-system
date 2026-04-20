@@ -69,6 +69,7 @@ Core volumes:
 Shared filesystem conventions:
 
 - reports: `/data/shared/jobs/report_<id>/`
+- skill drafts: `/data/shared/skills_drafts/<draft_slug>/SKILL.md`
 - skills: `/data/shared/skills/<skill_slug>/SKILL.md`
 
 ## Runtime Communication
@@ -103,3 +104,8 @@ Database init:
 - `backend` and `worker` wait on healthy `postgres`.
 - Langfuse services use explicit health-based dependencies across postgres/minio/redis/clickhouse.
 
+## Tradeoffs
+
+- The worker runs as a persistent service instead of spawning a fresh container per task. This simplifies orchestration and local development, but provides weaker isolation.
+- Backend and worker share the `shared_data` volume directly. This keeps the system simple and transparent, but repeated file operations are slower than a more specialized storage design.
+- The stack is optimized for a local Docker workflow and reproducibility, not for highly dynamic task scheduling or elastic worker scaling.

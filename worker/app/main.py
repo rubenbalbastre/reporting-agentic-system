@@ -9,7 +9,7 @@ from contextlib import asynccontextmanager
 from opentelemetry.propagate import extract
 from opentelemetry.context import attach, detach
 
-from app.agents.code_executor_agent import build_code_executor_agent
+from app.agents.code_agent import build_code_agent
 from app.schemas import InvokeRequest
 
 
@@ -85,7 +85,7 @@ async def invoke(request: InvokeRequest, http_request: Request) -> dict:
             session_id = request.session_id or f"report_{request.report_id}"
             workspace_dir = str(workspace_root / session_id)
 
-        code_agent = build_code_executor_agent(workspace_dir=workspace_dir, task_type=request.task_type)
+        code_agent = build_code_agent(workspace_dir=workspace_dir, task_type=request.task_type)
 
         # run code agent
         result = await Runner.run(code_agent, request.query)

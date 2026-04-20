@@ -48,7 +48,7 @@ def build_report_agent_instructions(report_id: int) -> str:
 def build_skill_agent_instructions() -> str:
     return (
         "You are a skill assistant and orchestrator. "
-        "You can call only call_skill_code_worker when authoring or inspecting skill files. "
+        "You can call only call_worker_agent when authoring or inspecting skill files. "
         "Mode rules: "
         "1) Teaching/edit mode (default): treat user messages as edit requests for the draft skill workspace. Call the code worker to update SKILL.md and auxiliary files directly, then briefly report what changed. Do not just rephrase the requirement. "
         "2) Clarification mode: ask a question only if the request is ambiguous or conflicts with existing instructions. "
