@@ -8,14 +8,17 @@ from pathlib import Path
 
 
 def get_main_agent_skills_root() -> Path:
+    """Return the published shared-skills root used by backend and worker."""
     return Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills")).resolve()
 
 
 def get_main_agent_skills_drafts_root() -> Path:
+    """Return the draft-skills root used while editing skills before publish."""
     return Path(os.getenv("MAIN_AGENT_SKILLS_DRAFTS_ROOT", "/data/shared/skills_drafts")).resolve()
 
 
 def ensure_child_dir(root: Path, child_name: str) -> Path:
+    """Create one direct child directory under `root` and reject path traversal."""
     root = root.resolve()
     root.mkdir(parents=True, exist_ok=True)
     child_dir = (root / child_name).resolve()
@@ -26,6 +29,7 @@ def ensure_child_dir(root: Path, child_name: str) -> Path:
 
 
 def ensure_draft_skill_md(slug: str) -> Path:
+    """Ensure a draft skill directory contains a concrete `SKILL.md` file."""
     draft_dir = ensure_child_dir(get_main_agent_skills_drafts_root(), slug)
     skill_md_path = (draft_dir / "SKILL.md").resolve()
     if skill_md_path.parent != draft_dir:
@@ -36,6 +40,7 @@ def ensure_draft_skill_md(slug: str) -> Path:
 
 
 def slugify(text: str, max_len: int = 50) -> str:
+    """Convert free text into a filesystem-safe slug with a stable fallback."""
     lowered = text.lower()
     cleaned = re.sub(r"[^a-z0-9]+", "-", lowered).strip("-")
     if not cleaned:
@@ -44,6 +49,7 @@ def slugify(text: str, max_len: int = 50) -> str:
 
 
 def build_skill_markdown(request_text: str) -> str:
+    """Build a minimal fallback `SKILL.md` from a raw user teaching prompt."""
     request = request_text.strip()
     return (
         "---\n"
@@ -59,6 +65,7 @@ def build_skill_markdown(request_text: str) -> str:
 
 
 def _ensure_frontmatter(skill_markdown: str, skill_name: str, description: str) -> str:
+    """Add YAML frontmatter when agent-generated markdown omitted it."""
     text = skill_markdown.strip()
     if text.startswith("---"):
         return text + "\n"
@@ -73,6 +80,7 @@ def _ensure_frontmatter(skill_markdown: str, skill_name: str, description: str) 
 
 
 def _allocate_unique_skill_dir(root: Path, base_name: str) -> tuple[str, Path]:
+    """Allocate a unique skill directory, suffixing with a timestamp on collision."""
     dir_name = base_name
     skill_dir = (root / dir_name).resolve()
     if skill_dir.parent != root:
@@ -88,6 +96,7 @@ def _allocate_unique_skill_dir(root: Path, base_name: str) -> tuple[str, Path]:
 
 
 def create_skill_from_agent_output(skill_name: str, description: str, skill_markdown: str) -> dict[str, str]:
+    """Create a published skill package from structured agent output."""
     root = get_main_agent_skills_root()
     root.mkdir(parents=True, exist_ok=True)
 
@@ -109,6 +118,7 @@ def create_skill_from_agent_output(skill_name: str, description: str, skill_mark
 
 
 def create_skill_from_request(request_text: str) -> dict[str, str]:
+    """Create a simple published skill package directly from raw user text."""
     # Backward-compatible fallback for direct creation without LLM-generated structure.
     root = get_main_agent_skills_root()
     root.mkdir(parents=True, exist_ok=True)
@@ -128,6 +138,7 @@ def create_skill_from_request(request_text: str) -> dict[str, str]:
 
 
 def _parse_frontmatter_name_description(skill_md_text: str) -> tuple[str, str]:
+    """Extract `name` and `description` from a `SKILL.md` frontmatter block."""
     lines = skill_md_text.splitlines()
     if not lines or lines[0].strip() != "---":
         return "", ""
@@ -157,6 +168,7 @@ def _parse_frontmatter_name_description(skill_md_text: str) -> tuple[str, str]:
 
 
 def read_skill_name_description(skill_md_path: str) -> tuple[str, str]:
+    """Read `name` and `description` from an on-disk `SKILL.md` file."""
     path = Path(skill_md_path).resolve()
     if not path.exists() or not path.is_file():
         return "", ""
@@ -165,6 +177,7 @@ def read_skill_name_description(skill_md_path: str) -> tuple[str, str]:
 
 
 def publish_skill_draft(skill_md_path: str) -> dict[str, str]:
+    """Move a validated draft skill package into the published skills root."""
     drafts_root = get_main_agent_skills_drafts_root()
     final_root = get_main_agent_skills_root()
     drafts_root.mkdir(parents=True, exist_ok=True)
@@ -204,6 +217,7 @@ def publish_skill_draft(skill_md_path: str) -> dict[str, str]:
 
 
 def list_existing_skills(limit: int = 200) -> list[dict[str, str]]:
+    """List published skills with lightweight metadata for skill discovery APIs."""
     root = get_main_agent_skills_root()
     if not root.exists():
         return []

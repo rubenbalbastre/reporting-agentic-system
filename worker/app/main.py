@@ -14,6 +14,7 @@ from app.schemas import InvokeRequest
 
 
 def _log_langfuse_readiness() -> None:
+    """Log whether Langfuse is reachable without failing worker startup."""
     langfuse = get_client()
     try:
         if langfuse.auth_check():
@@ -26,6 +27,7 @@ def _log_langfuse_readiness() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Initialize environment and tracing for the worker application lifespan."""
     # --- startup logic ---
     load_dotenv(Path(__file__).resolve().parents[2] / ".env")
     OpenAIAgentsInstrumentor().instrument()
@@ -41,11 +43,13 @@ app = FastAPI(title="Artifact Worker", lifespan=lifespan)
 
 @app.get("/health")
 def health() -> dict[str, str]:
+    """Return a minimal worker health payload."""
     return {"status": "ok", "service": "worker"}
 
 
 @app.post("/invoke")
 async def invoke(request: InvokeRequest, http_request: Request) -> dict:
+    """Run the worker code agent inside a validated report or skill workspace."""
     parent_context = extract(dict(http_request.headers))
     context_token = attach(parent_context)
 

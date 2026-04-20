@@ -5,10 +5,12 @@ from pathlib import Path
 
 
 def get_shared_skills_root() -> Path:
+    """Return the published shared-skills root visible to the worker."""
     return Path(os.getenv("MAIN_AGENT_SKILLS_ROOT", "/data/shared/skills")).resolve()
 
 
 def _collect_skill_entries(root: Path) -> list[dict[str, Path]]:
+    """Collect published skill entries from both package and legacy flat layouts."""
     entries: list[dict[str, Path]] = []
 
     # Structured skills: <skill-name>/SKILL.md
@@ -26,6 +28,7 @@ def _collect_skill_entries(root: Path) -> list[dict[str, Path]]:
 
 
 def _extract_skill_summary(skill_md: Path) -> tuple[str, str]:
+    """Extract the title and short description from a published `SKILL.md` file."""
     text = skill_md.read_text(encoding="utf-8")
     lines = text.splitlines()
     if not lines or lines[0].strip() != "---":
@@ -59,6 +62,7 @@ def _extract_skill_summary(skill_md: Path) -> tuple[str, str]:
 
 
 def search_shared_skills(query: str, limit: int = 10) -> list[dict[str, str]]:
+    """Search published skills by simple keyword matching over id and frontmatter."""
     root = get_shared_skills_root()
     if not root.exists():
         return []
@@ -93,6 +97,7 @@ def search_shared_skills(query: str, limit: int = 10) -> list[dict[str, str]]:
 
 
 def read_shared_skill(skill_name: str) -> str:
+    """Read one published shared skill by directory name or legacy flat filename."""
     root = get_shared_skills_root()
     if not root.exists():
         raise FileNotFoundError("Skills directory not found")
