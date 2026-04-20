@@ -2,6 +2,23 @@
 
 This is an agentic reporting app that turns chat requests into iterative markdown reports and supports reusable shared Skills.
 
+## Why This Project Exists
+
+The goal of this project was to build a practical agentic product instead of a demo chatbot: one where agents do not just answer questions, but maintain persistent workspaces, generate artifacts, and improve reusable outputs over time.
+
+It focuses on two concrete problems:
+
+- turning analytical chat requests into living report deliverables
+- capturing reusable operational knowledge as shared skills
+
+## Highlights
+
+- Multi-agent architecture with separate orchestration, editing, and execution responsibilities
+- Persistent report workspaces backed by markdown files and generated artifacts
+- Reusable Skills system with draft, publish, and reopen-in-draft flows
+- Full Dockerized stack with backend, worker, PostgreSQL, frontend, and Langfuse observability
+- Clear split between product documentation and technical architecture documentation
+
 ## Product Overview
 
 It is built around two connected product loops:
@@ -41,7 +58,7 @@ The Skills flow supports collaborative reuse:
 - Maintain shared skills through draft chat, publish, and reopen-in-draft flows.
 - Persist skill teaching conversations in Postgres (`skills -> skill_conversations -> skill_messages`).
 
-## Setup & Run
+## Quick Start
 
 - Docker + Docker Compose
 - OpenAI API key
@@ -78,6 +95,14 @@ make db-init
 - Worker API: `http://localhost:5000`
 - Langfuse UI: `http://localhost:3002`
 
+Suggested product walkthrough:
+
+1. Create a report.
+2. Ask for a first analysis or chart in the report chat.
+3. Review the updated markdown preview and export the report as PDF.
+4. Open `Teach the Agent`, create a draft skill, and refine it through chat.
+5. Publish the skill and verify it appears in `Skill Library`.
+
 Useful commands:
 
 - `make up` / `make down` / `make ps` / `make logs`
@@ -89,6 +114,29 @@ Useful commands:
 Run `make help` for full list.
 
 ## Architecture, API, and Data
+
+### Architecture Diagram
+
+```mermaid
+flowchart LR
+    U[User in Browser]
+    F[Frontend<br/>React/Vite]
+    B[Backend API<br/>FastAPI]
+    W[Worker API<br/>FastAPI]
+    DB[(PostgreSQL)]
+    SV[(shared_data volume)]
+    L[Langfuse]
+
+    U --> F
+    F --> B
+    B --> DB
+    B --> W
+    B <--> SV
+    W --> DB
+    W <--> SV
+    B --> L
+    W --> L
+```
 
 The app exposes:
 
@@ -134,6 +182,15 @@ Documentation:
 - Skills currently rely on a draft/publish workflow centered on `SKILL.md`. Richer multi-file skill packages are possible, but are not yet the main workflow.
 - The app does not currently detect duplicate skills during creation, so overlapping draft skills can be created.
 - Skill retrieval is intentionally simple today and does not use a more advanced retrieval layer.
+
+## Future Improvements
+
+- Add duplicate-skill detection or merge suggestions during skill creation
+- Improve skill retrieval beyond simple keyword and frontmatter matching
+- Support richer multi-file skill packages as a first-class workflow
+- Add stronger isolation for worker execution if the product moves beyond a simplification-first architecture
+- Introduce more robust synchronization guarantees between database state and shared filesystem state
+- Add a polished hosted demo or recorded walkthrough for faster external evaluation
 
 ## Repo Layout
 
