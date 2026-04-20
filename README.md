@@ -126,6 +126,15 @@ Documentation:
 - Agent architecture: [docs/agents.md](docs/agents.md)
 - Container architecture: [docs/container-architecture.md](docs/container-architecture.md)
 
+## Tradeoffs And Limitations
+
+- The worker runs as a persistent Docker service instead of spawning one isolated container per task. This simplifies orchestration and local development, but provides weaker isolation.
+- Backend and worker share files through the `shared_data` Docker volume. This keeps the system simple and easy to reason about, but shared-volume file operations are slower than a more specialized storage design.
+- Reports are optimized for markdown-first deliverables. The product is strongest when the output is a document with narrative, tables, and figures.
+- Skills currently rely on a draft/publish workflow centered on `SKILL.md`. Richer multi-file skill packages are possible, but are not yet the main workflow.
+- The app does not currently detect duplicate skills during creation, so overlapping draft skills can be created.
+- Skill retrieval is intentionally simple today and does not use a more advanced retrieval layer.
+
 ## Repo Layout
 
 ```text

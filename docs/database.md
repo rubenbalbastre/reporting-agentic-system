@@ -219,3 +219,9 @@ Purpose:
 - The file source of truth for a skill package is the `SKILL.md` path stored in `skills.skill_md_path`.
 - Deleting a report or skill triggers best-effort filesystem cleanup in addition to DB deletion.
 - Backend and worker both depend on the same `DATABASE_URL` and shared volume layout.
+
+## Tradeoffs
+
+- Persistence is split between PostgreSQL and the shared filesystem. This keeps the product model practical, but means the system does not live in a single storage layer.
+- Reports and skills store metadata and conversation history in the database, while their actual file content lives on disk. That separation is useful for the product, but requires path management and best-effort filesystem cleanup.
+- The current design favors simple, inspectable storage over stronger transactional guarantees between database state and filesystem state.
