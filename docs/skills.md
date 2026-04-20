@@ -170,7 +170,7 @@ The publish endpoint updates:
 
 ## Worker Consumption
 
-Worker `code_executor_agent` can use:
+Worker `code_agent` can use:
 - `search_agent_skills(query)` to find skills by keyword in id/frontmatter summary.
 - `read_agent_skill(skill_name)` to load a selected shared skill.
 

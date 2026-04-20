@@ -26,6 +26,18 @@ Behavior notes:
 - Sending a message to a report conversation triggers the backend orchestration flow (`reporting_agent` + tools).
 - Report files are served from the report workspace via `/reports/{id}/files/{path}`.
 
+### API Flow
+
+For `POST /conversations/{conversation_id}/messages`:
+
+1. Backend validates input and loads message history from Postgres.
+2. Backend ensures `report.md` exists in `/data/shared/jobs/report_<id>/`.
+3. Backend runs `reporting_agent` with recent conversation context.
+4. `reporting_agent` may call `worker_agent` for analysis/artifact generation.
+5. `reporting_agent` uses `editor_agent` to write/update `report.md` and references.
+6. Backend stores user + assistant messages in `messages`.
+7. Frontend refreshes chat and report markdown preview.
+
 ## Skills
 
 - `GET /skills`

@@ -1,10 +1,12 @@
-# ReportingAgent
+# Reporting Agent
 
-ReportingAgent is an agentic reporting app that turns chat requests into iterative markdown reports and supports reusable shared Skills.
+This is an agentic reporting app that turns chat requests into iterative markdown reports and supports reusable shared Skills.
 
 ## Product Overview
 
-ReportingAgent is built around one practical loop: ask questions in chat, generate analysis and artifacts with agents, and keep a living markdown deliverable that improves turn by turn.
+It is built around one practical loop: ask questions in chat, generate analysis and artifacts with agents, and keep a living markdown deliverable that improves turn by turn.
+
+### Reports
 
 Reports are the main output surface. Each report has a persistent workspace (`report_<id>`) where `report.md` and generated files evolve over time.
 
@@ -16,6 +18,8 @@ The Reports experience is designed for iterative delivery:
 - Persist report conversations in Postgres (`reports -> conversations -> messages`).
 - Use backend + worker agent orchestration for report generation/refinement.
 - Work with any dataset, as long as it is accessible in a PostgreSQL database.
+
+### Skills
 
 Skills are the reusable behavior layer. Teams can teach guidance once and publish it as shared `SKILL.md` instructions for future worker runs.
 
@@ -37,7 +41,6 @@ The Skills flow supports collaborative reuse:
 - Docker + Docker Compose
 - OpenAI API key
 - Optional: Kaggle credentials for Olist dataset loading
-- `.env.local` for local (non-Docker) backend/worker runs
 
 1. Copy env file and set values:
 
@@ -104,6 +107,7 @@ Data layout:
 - `/data/shared` is backed by Docker volume `shared_data`.
 - `SKILL.md` requires YAML frontmatter (`name`, `description`) and markdown instructions.
 - Worker skill retrieval is keyword/frontmatter based (`search_agent_skills` + `read_agent_skill`).
+- All agentic traces are logged in Langfuse for further analysis and observability.
 
 For technical details:
 - API reference: [docs/api.md](docs/api.md)
@@ -123,8 +127,3 @@ docs/                    Feature and technical docs
 scripts/                 Kaggle download/load helpers
 Makefile                 Main Docker/local workflow commands
 ```
-
-## Notes
-
-- Frontend is React + Vite.
-- `.env.local` is required for backend/worker local runs when `APP_ENV != docker`.
