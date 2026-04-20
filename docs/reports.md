@@ -70,19 +70,6 @@ Worker result contract:
 - `needs_more_info`: backend receives a clarification question with missing info.
 - `ready_to_execute`: backend receives a short execution summary.
 
-## Backend API
-
-- `GET /reports`
-- `POST /reports`
-- `DELETE /reports/{report_id}`
-- `GET /reports/{report_id}/conversations`
-- `POST /reports/{report_id}/conversations`
-- `GET /conversations/{conversation_id}/messages`
-- `POST /conversations/{conversation_id}/messages`
-- `GET /reports/{report_id}/markdown`
-- `GET /reports/{report_id}/pdf`
-- `GET /reports/{report_id}/files/{file_path}`
-
 ## UX Actions
 
 Sidebar actions:

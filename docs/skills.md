@@ -1,4 +1,4 @@
-# Skills (Shared)
+# Skills
 
 This document describes the current shared Skills implementation.
 
@@ -93,24 +93,6 @@ Implementation details:
 - `POST /skills` creates a skill row with empty description and also creates one initial `skill_conversation`.
 - Skill markdown path (`skill_md_path`) remains empty until publish.
 
-## Backend API
-
-Primary endpoints:
-
-- `GET /skills`
-- `POST /skills`
-- `DELETE /skills/{skill_id}`
-- `GET /skills/{skill_id}/markdown`
-- `GET /skills/{skill_id}/conversations`
-- `POST /skills/{skill_id}/conversations`
-- `GET /skill-conversations/{skill_conversation_id}/messages`
-- `POST /skill-conversations/{skill_conversation_id}/messages`
-- `POST /skills/{skill_id}/publish`
-
-Compatibility endpoints:
-
-- `POST /agent/teach` (legacy quick-save)
-- `GET /agent/skills` (legacy compatibility)
 
 ## UX Flow
 
