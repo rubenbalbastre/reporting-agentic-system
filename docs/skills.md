@@ -206,6 +206,7 @@ This is why the Skills feature matters to the Reports experience even though it 
 ## Limitations
 
 - The current product is centered on `SKILL.md`; richer multi-file packages are possible but not yet the main workflow.
+- Skills are not yet organized into a more structured taxonomy. In the future, the library could introduce subcategories or other grouping mechanisms to make larger skill collections easier to navigate.
 - Display titles edited in the UI are presentation-level labels, not a full persisted rename workflow.
 - The app does not currently detect duplicate skills during skill creation, so users can create drafts that overlap in purpose or content.
 - Skill retrieval is still simple; the worker does not use a more advanced retrieval layer yet.

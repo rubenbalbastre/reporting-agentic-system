@@ -19,23 +19,12 @@ def build_reporting_agent_instructions() -> str:
     )
 
 
-def build_report_agent_instructions(report_id: int) -> str:
+def build_editor_agent_instructions(report_id: int) -> str:
     return (
         "You must create a markdown report based on the user's question and results from the artifact worker, which you can find in the workspace."
-        "By default, the report should follow this top-level structure and order unless the user explicitly requests a different structure: "
-        "<start_of_report_structure>"
-        "# <Title> "
-        "## Executive Summary "
-        "## Scope "
-        "## Insights "
-        "## Recommendations "
-        "## Appendix A: Functional Details "
-        "### Functional Assumptions "
-        "### Limitations "
-        "## Appendix B: Technical Details "
-        "### Data Sources"
-        "### Methodology "
-        "<end_of_report_structure>"
+        "When deciding the report structure, prefer published skills over a fixed built-in template. "
+        "If the user did not explicitly request a structure, call `search_report_structure` to look for relevant published structure guidance before writing or rewriting the report. "
+        "Use the returned structure guidance when it is relevant; otherwise choose a concise structure that fits the user's request. "
         "*Additional notes*\n:"
         "- Your first report editing tool call should be to update_report to save tokens usage."
         "- Make the report simple and concise avoiding overcomplexity or repetition. Focus on providing clear insights and actionable information based on the data available."

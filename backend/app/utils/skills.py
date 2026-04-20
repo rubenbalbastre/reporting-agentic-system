@@ -244,3 +244,37 @@ def list_existing_skills(limit: int = 200) -> list[dict[str, str]]:
             }
         )
     return entries
+
+
+def search_existing_skills(query: str, limit: int = 10) -> list[dict[str, str]]:
+    """Search published skills by simple keyword matching over id, name, and description."""
+    term = (query or "").strip().lower()
+    items = list_existing_skills(limit=500)
+    if not term:
+        return items[:limit]
+
+    terms = [part for part in re.split(r"[^a-z0-9]+", term) if part]
+    results: list[dict[str, str]] = []
+    for item in items:
+        haystack = "\n".join(
+            [
+                item.get("skill_id", ""),
+                item.get("name", ""),
+                item.get("description", ""),
+            ]
+        ).lower()
+        if term in haystack or any(part in haystack for part in terms):
+            results.append(item)
+        if len(results) >= limit:
+            break
+    return results
+
+
+def read_existing_skill(skill_id: str) -> str:
+    """Read one published skill markdown by published skill directory id."""
+    skill_root = get_main_agent_skills_root()
+    safe_skill_id = Path(skill_id).name
+    skill_md = (skill_root / safe_skill_id / "SKILL.md").resolve()
+    if skill_md.parent.parent != skill_root or not skill_md.exists() or not skill_md.is_file():
+        raise FileNotFoundError(f"Published skill not found: {skill_id}")
+    return skill_md.read_text(encoding="utf-8")

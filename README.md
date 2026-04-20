@@ -123,7 +123,7 @@ Reports:
 Skills:
 
 - “Teach the agent to always state assumptions and data caveats when generating charts.”
-- “Create a skill for structuring certain report in sections as summary, evidence, and conclusion.”
+- “Create a skill for structuring certain report in sections as title, summary, scope, insights, recommendations, functional details (assumptions, limitations), technical details (data sources, methodology).”
 - "Add {insert custom style} when generating sales figures".
 
 Useful commands:
@@ -209,6 +209,7 @@ Documentation:
 ## Future Improvements
 
 - Add duplicate-skill detection or merge suggestions during skill creation
+- Organize Skills with a more structured taxonomy, such as subcategories or grouped library views
 - Improve skill retrieval beyond simple keyword and frontmatter matching
 - Support richer multi-file skill packages as a first-class workflow
 - Add stronger isolation for worker execution if the product moves beyond a simplification-first architecture
