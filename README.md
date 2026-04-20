@@ -111,6 +111,7 @@ Data layout:
 
 For technical details:
 - API reference: [docs/api.md](docs/api.md)
+- Database and storage: [docs/database.md](docs/database.md)
 - Agent architecture: [docs/agents.md](docs/agents.md)
 - Container architecture: [docs/container-architecture.md](docs/container-architecture.md)
 - Reports feature: [docs/reports.md](docs/reports.md)
