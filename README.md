@@ -92,7 +92,7 @@ make db-init
 
 - Frontend: `http://localhost:3001`
 - Backend API: `http://localhost:8000`
-- Worker API: `http://localhost:5000`
+- Worker API: `http://localhost:5000` (internal service, mainly for backend-to-worker calls)
 - Langfuse UI: `http://localhost:3002`
 
 Runtime note:

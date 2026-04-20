@@ -7,7 +7,7 @@ Use this as a concise developer reference. For product behavior and UX, start wi
 Base URLs in local Docker setup:
 
 - Backend API: `http://localhost:8000`
-- Worker API: `http://localhost:5000`
+- Worker API: `http://localhost:5000` (internal service)
 
 ## Backend API
 
