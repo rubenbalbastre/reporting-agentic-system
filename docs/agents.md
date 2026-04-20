@@ -83,6 +83,30 @@ For conversational data, postgres state:
   - reports/conversations/messages
   - skills/skill_conversations/skill_messages
 
+### Why a persistent worker container
+
+The worker was implemented as a persistent Docker service instead of spawning a fresh isolated container per task. The main reason was simplification:
+
+- much simpler orchestration from the backend, since every worker call is just `POST /invoke`
+- no extra container lifecycle management, cleanup, image coordination, or job queue was needed
+- easier local development and debugging because backend and worker behave like normal long-lived services
+- lower implementation overhead for an early version of the product
+
+This is not the strongest isolation model, but for this project the operational simplicity was worth more than per-task container isolation.
+
+### Why shared Docker volumes
+
+Backend and worker communicate through the `shared_data` Docker volume mounted at `/data/shared`. This was selected as a pragmatic way to share report files, generated artifacts, and skill packages between services.
+
+The tradeoff is that Docker shared volumes are not especially fast, particularly for repeated small file operations. Even with that limitation, the approach was kept because it simplified the system considerably:
+
+- both services can read and write the same workspaces without building an extra storage API
+- report markdown, images, scripts, and skill files are immediately visible to both containers
+- implementation stayed easy to reason about because workspace paths are plain filesystem paths
+- persistence across container restarts comes for free through the Docker volume
+
+In short, shared volumes were slower than a more specialized storage design, but good enough for the workload and much simpler to build and operate.
+
 
 ## Design Decisions
 
