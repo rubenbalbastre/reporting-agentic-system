@@ -7,7 +7,11 @@ Base URLs (default local setup):
 - Backend API: `http://localhost:8000`
 - Worker API: `http://localhost:5000` (internal service, typically called by backend)
 
-## Reports
+## Backend API:
+
+### Reports
+
+#### Methods
 
 - `GET /reports`
 - `POST /reports`
@@ -26,7 +30,7 @@ Behavior notes:
 - Sending a message to a report conversation triggers the backend orchestration flow (`reporting_agent` + tools).
 - Report files are served from the report workspace via `/reports/{id}/files/{path}`.
 
-### API Flow
+#### Flow
 
 For `POST /conversations/{conversation_id}/messages`:
 
@@ -38,7 +42,9 @@ For `POST /conversations/{conversation_id}/messages`:
 6. Backend stores user + assistant messages in `messages`.
 7. Frontend refreshes chat and report markdown preview.
 
-## Skills
+### Skills
+
+#### Methods
 
 - `GET /skills`
 - `POST /skills`
@@ -56,37 +62,13 @@ Behavior notes:
 - `GET /skills/{skill_id}/markdown` returns `404` until a publish has generated `SKILL.md`.
 - Publish updates skill metadata (`name`, `description`, `slug`, `skill_md_path`, `updated_at`).
 
-## Compatibility Endpoints
+#### Flow
 
-- `POST /agent/teach` (legacy quick-save flow)
-- `GET /agent/skills` (legacy compatibility listing)
+[to fill]
 
-## Health
-
-- Backend: `GET /health`
-- Worker: `GET /health`
-
-## Worker Internal Endpoint
+## Worker Internal API
 
 - `POST /invoke`
-
-Request body:
-
-```json
-{
-  "query": "string",
-  "report_id": 123
-}
-```
-
-Response body:
-
-```json
-{
-  "result": "string",
-  "session_id": "report_123"
-}
-```
 
 Notes:
 
