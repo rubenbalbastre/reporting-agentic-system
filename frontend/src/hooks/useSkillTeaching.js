@@ -229,6 +229,7 @@ export function useSkillTeaching(toast) {
   async function sendSkillMessage() {
     if (!state.activeSkillConversationId || !state.teachInput.trim() || state.loading.teach) return;
     const content = state.teachInput.trim();
+    const skillId = state.activeSkillId;
     dispatch({ type: "set_teach_status", value: null });
     dispatch({ type: "set_teach_input", value: "" });
     dispatch({
@@ -248,6 +249,10 @@ export function useSkillTeaching(toast) {
           return;
         }
         await loadSkillMessages(state.activeSkillConversationId);
+        if (skillId) {
+          await loadSkillMarkdown(skillId);
+          await loadSkillFiles(skillId);
+        }
       } catch (_err) {
         setErrorStatus("Network error while sending skill message");
       }
